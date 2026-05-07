@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibeCheck — The Mirror</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; }
+    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
+    h1 { font-size: 1.25rem; margin-bottom: 12px; letter-spacing: -0.02em; }
+    .video-wrap { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #111; }
+    video { width: 100%; display: block; }
+    .live-badge { position: absolute; top: 12px; left: 12px; background: rgba(255,0,0,0.85); color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .live-dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulse 1.2s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+    .signals { margin-top: 16px; display: grid; gap: 12px; }
+    .card { background: #161616; border-radius: 12px; padding: 16px; }
+    .card h2 { font-size: 0.875rem; text-transform: uppercase; color: #888; margin-bottom: 8px; letter-spacing: 0.04em; }
+    .occupancy { display: flex; align-items: baseline; gap: 8px; }
+    .occupancy .pct { font-size: 2.5rem; font-weight: 700; }
+    .occupancy .label { font-size: 0.875rem; padding: 4px 10px; border-radius: 20px; background: #333; }
+    .pills { display: flex; flex-wrap: wrap; gap: 8px; }
+    .pill { background: #2a2a2a; padding: 6px 12px; border-radius: 20px; font-size: 0.875rem; }
+    .bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+    .bar-fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #feca57); width: 0%; transition: width 0.5s ease; }
+    .selector { margin-bottom: 16px; }
+    select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 1rem; }
+    .muted { color: #666; font-size: 0.875rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎛️ VibeCheck</h1>
+
+    <div class="selector">
+      <select id="venueSelect"></select>
+    </div>
+
+    <div class="video-wrap">
+      <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+      <video id="mirror" controls muted playsinline autoplay></video>
+    </div>
+
+    <div class="signals" id="signals">
+      <div class="card"><h2>Occupancy</h2><p class="muted">Waiting for data…</p></div>
+    </div>
+  </div>
+
+  <script>
+    // Dynamic base URLs: works on localhost, LAN IP, and ngrok
+    const urlParams = new URLSearchParams(window.location.search);
+    const HLS_HOST = urlParams.get('hls') || `${window.location.hostname}:8081`;
+    const API_BASE = '/api';
+    let hls = null;
+    let ws = null;
+
+    async function loadVenues() {
+      const res = await fetch(`${API_BASE}/venues`);
+      const venues = await res.json();
+      const sel = document.getElementById('venueSelect');
+      sel.innerHTML = venues.map(v => `<option value="${v.id}">${v.name} (${v.type})</option>`).join('');
+      sel.addEventListener('change', () => switchVenue(sel.value));
+      switchVenue(venues[0].id);
+    }
+
+    function switchVenue(venueId) {
+      const video = document.getElementById('mirror');
+      const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
+      const streamUrl = `${protocol}//${HLS_HOST}/${venueId}/index.m3u8`;
+
+      if (hls) { hls.destroy(); hls = null; }
+      if (Hls.isSupported()) {
+        hls = new Hls({ liveSyncDurationCount: 2, liveMaxLatencyDurationCount: 5 });
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+      } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.addEventListener('loadedmetadata', () => video.play());
+      }
+      setupWebSocket(venueId);
+    }
+
+    function setupWebSocket(venueId) {
+      if (ws) {
+        ws.close();
+      }
+      
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      // Handle local run (port 8000 directly) vs Nginx (proxy via /api)
+      const isLocalhost8000 = window.location.port === '8000';
+      const wsUrl = isLocalhost8000 
+          ? `${protocol}//${window.location.host}/venues/${venueId}/signals/ws`
+          : `${protocol}//${window.location.host}${API_BASE}/venues/${venueId}/signals/ws`;
+          
+      ws = new WebSocket(wsUrl);
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        renderSignals(data, venueId);
+      };
+      
+      ws.onclose = () => {
+        console.log("WebSocket closed. Reconnecting in 5s...");
+        setTimeout(() => {
+          const sel = document.getElementById('venueSelect');
+          if (sel && sel.value === venueId) setupWebSocket(venueId);
+        }, 5000);
+      };
+      
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err);
+        ws.close();
+      };
+    }
+
+    function renderSignals(data, venueId) {
+      const container = document.getElementById('signals');
+      if (!data.occupancy) {
+        container.innerHTML = `<div class="card"><h2>Signals</h2><p class="muted">No live data yet for ${venueId}.</p></div>`;
+        return;
+      }
+
+      let html = '';
+
+      // Occupancy
+      const occ = data.occupancy;
+      const color = occ.percentage <= 30 ? '#4caf50' : occ.percentage <= 60 ? '#ff9800' : '#f44336';
+      html += `
+        <div class="card">
+          <h2>Occupancy</h2>
+          <div class="occupancy">
+            <span class="pct" style="color:${color}">${occ.percentage}%</span>
+            <span class="label" style="background:${color}22; color:${color}">${occ.label}</span>
+          </div>
+          <p class="muted" style="margin-top:6px">${occ.head_count} / ${occ.capacity} people</p>
+        </div>
+      `;
+
+      // Demographics
+      if (data.demographics) {
+        const demo = data.demographics;
+        html += `
+          <div class="card">
+            <h2>Crowd</h2>
+            <div class="pills">
+              <div class="pill">${demo.primary_age_bracket}</div>
+              <div class="pill">♂ ${demo.male_presenting_pct}% / ♀ ${demo.female_presenting_pct}%</div>
+            </div>
+            <div class="bar"><div class="bar-fill" style="width:${demo.male_presenting_pct}%"></div></div>
+            <p class="muted" style="margin-top:6px">Estimates based on visual analysis. Approximate only.</p>
+          </div>
+        `;
+      }
+
+      // Dance Floor
+      if (data.dancefloor) {
+        const df = data.dancefloor;
+        html += `
+          <div class="card">
+            <h2>Dance Floor Right Now</h2>
+            <div class="occupancy">
+              <span class="pct" style="font-size:1.5rem">${df.state}</span>
+            </div>
+            <div class="bar"><div class="bar-fill" style="width:${df.energy_score}%"></div></div>
+            <p class="muted" style="margin-top:6px">Energy ${df.energy_score}/100</p>
+          </div>
+        `;
+      }
+
+      // Vibe Zones
+      if (data.vibe_zones && data.vibe_zones.length) {
+        html += `
+          <div class="card">
+            <h2>Vibe Right Now</h2>
+            <div class="pills">
+              ${data.vibe_zones.map(z => `<div class="pill" style="background:#ff6b6b22; color:#ff6b6b">${z.label}</div>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    loadVenues();
+  </script>
+</body>
+</html>
