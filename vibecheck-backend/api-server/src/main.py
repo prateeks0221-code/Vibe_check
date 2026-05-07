@@ -2,7 +2,7 @@
 import os
 import json
 from typing import Dict, List, Optional
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import redis
@@ -23,35 +23,6 @@ r = redis.from_url(REDIS_URL)
 
 # In-memory signal cache (last known good)
 _signal_cache: Dict[str, VenueSignals] = {}
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[str, List[WebSocket]] = {}
-
-    async def connect(self, websocket: WebSocket, venue_id: str):
-        await websocket.accept()
-        if venue_id not in self.active_connections:
-            self.active_connections[venue_id] = []
-        self.active_connections[venue_id].append(websocket)
-
-    def disconnect(self, websocket: WebSocket, venue_id: str):
-        if venue_id in self.active_connections:
-            if websocket in self.active_connections[venue_id]:
-                self.active_connections[venue_id].remove(websocket)
-
-    async def broadcast_to_venue(self, venue_id: str, message: str):
-        if venue_id in self.active_connections:
-            # Create a list to avoid modifying during iteration if a client drops
-            dead_connections = []
-            for connection in self.active_connections[venue_id]:
-                try:
-                    await connection.send_text(message)
-                except Exception:
-                    dead_connections.append(connection)
-            for dead in dead_connections:
-                self.disconnect(dead, venue_id)
-
-manager = ConnectionManager()
 
 # Serve static web player files
 import pathlib
@@ -117,31 +88,12 @@ def get_signals(venue_id: str):
 
 
 @app.post("/venues/{venue_id}/signals")
-async def post_signals(venue_id: str, payload: VenueSignals):
+def post_signals(venue_id: str, payload: VenueSignals):
     """Called by signal-service to push latest aggregated state."""
     _signal_cache[venue_id] = payload
-    payload_json = payload.model_dump_json()
     # Also publish to Redis for any WebSocket consumers
-    r.setex(f"signals:{venue_id}", 60, payload_json)
-    
-    # Broadcast to connected WS clients
-    await manager.broadcast_to_venue(venue_id, payload_json)
+    r.setex(f"signals:{venue_id}", 60, payload.model_dump_json())
     return {"ok": True}
-
-@app.websocket("/venues/{venue_id}/signals/ws")
-async def websocket_endpoint(websocket: WebSocket, venue_id: str):
-    await manager.connect(websocket, venue_id)
-    try:
-        # Send initial state if available
-        sig = _signal_cache.get(venue_id)
-        if sig:
-            await websocket.send_text(sig.model_dump_json())
-        
-        while True:
-            # Keep connection alive, wait for client messages (if any)
-            data = await websocket.receive_text()
-    except WebSocketDisconnect:
-        manager.disconnect(websocket, venue_id)
 
 
 @app.get("/venues/{venue_id}/stream")

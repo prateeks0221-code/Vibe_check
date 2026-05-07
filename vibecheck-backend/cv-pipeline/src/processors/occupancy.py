@@ -1,36 +1,38 @@
 """Occupancy: count heads relative to venue capacity."""
+import os
 import numpy as np
 import cv2
-import logging
+from datetime import datetime
 from typing import Any, Dict
 from processors.base import BaseProcessor
-from ultralytics import YOLO
-
-logger = logging.getLogger(__name__)
 
 
 class OccupancyProcessor(BaseProcessor):
     """
-    YOLOv8 person detector.
+    Dummy person detector.
+    Production swap: YOLOv8-nano or MediaPipe object detector (person class).
     """
 
     name = "occupancy"
     required_fps = 1.0  # 1 fps is plenty for a 60s rolling window
 
     def __init__(self):
-        # Load the YOLOv8-nano model (downloads automatically if missing)
-        logger.info("Loading YOLOv8 model for occupancy...")
-        self.model = YOLO("yolov8n.pt")
-        # Class 0 is 'person' in COCO dataset
-        self.classes = [0]
+        # Dummy: use HOG + SVM OpenCV people detector as placeholder
+        self.hog = cv2.HOGDescriptor()
+        self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
     def process(self, frame: np.ndarray, context: Dict[str, Any]) -> Dict[str, Any]:
-        # Run inference (verbose=False to avoid console spam)
-        results = self.model(frame, classes=self.classes, verbose=False)
-        
-        # Count bounding boxes
-        head_count = len(results[0].boxes)
-        
+        if os.getenv("DUMMY_MODE", "false").lower() == "true":
+            # Generate plausible synthetic occupancy
+            import random
+            hour = datetime.fromtimestamp(context.get("timestamp", 0)).hour
+            base = 40 if 20 <= hour <= 23 else 15 if 12 <= hour <= 18 else 5
+            head_count = random.randint(base, base + 60)
+        else:
+            # Resize for speed
+            small = cv2.resize(frame, (640, 360))
+            rects, _ = self.hog.detectMultiScale(small, winStride=(8, 8), padding=(4, 4), scale=1.05)
+            head_count = len(rects)
         return {
             "head_count": head_count,
             "timestamp": context.get("timestamp"),
