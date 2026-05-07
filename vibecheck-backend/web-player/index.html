@@ -1,35 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VibeCheck — The Mirror</title>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #fff; }
-    .container { max-width: 480px; margin: 0 auto; padding: 16px; }
-    h1 { font-size: 1.25rem; margin-bottom: 12px; letter-spacing: -0.02em; }
-    .video-wrap { position: relative; width: 100%; border-radius: 12px; overflow: hidden; background: #111; }
-    video { width: 100%; display: block; }
-    .live-badge { position: absolute; top: 12px; left: 12px; background: rgba(255,0,0,0.85); color: #fff; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-    .live-dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: pulse 1.2s infinite; }
-    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-    .signals { margin-top: 16px; display: grid; gap: 12px; }
-    .card { background: #161616; border-radius: 12px; padding: 16px; }
-    .card h2 { font-size: 0.875rem; text-transform: uppercase; color: #888; margin-bottom: 8px; letter-spacing: 0.04em; }
-    .occupancy { display: flex; align-items: baseline; gap: 8px; }
-    .occupancy .pct { font-size: 2.5rem; font-weight: 700; }
-    .occupancy .label { font-size: 0.875rem; padding: 4px 10px; border-radius: 20px; background: #333; }
-    .pills { display: flex; flex-wrap: wrap; gap: 8px; }
-    .pill { background: #2a2a2a; padding: 6px 12px; border-radius: 20px; font-size: 0.875rem; }
-    .bar { height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 8px; }
-    .bar-fill { height: 100%; background: linear-gradient(90deg, #ff6b6b, #feca57); width: 0%; transition: width 0.5s ease; }
-    .selector { margin-bottom: 16px; }
-    select { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-size: 1rem; }
-    .muted { color: #666; font-size: 0.875rem; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    h1 {
+      font-size: 1.25rem;
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .video-wrap {
+      position: relative;
+      width: 100%;
+      border-radius: 12px;
+      overflow: hidden;
+      background: #111;
+    }
+
+    video {
+      width: 100%;
+      display: block;
+    }
+
+    .live-badge {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      background: rgba(255, 0, 0, 0.85);
+      color: #fff;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: #fff;
+      border-radius: 50%;
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        opacity: 1;
+      }
+
+      50% {
+        opacity: 0.4;
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .signals {
+      margin-top: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .card {
+      background: #161616;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .card h2 {
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      color: #888;
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .occupancy {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .occupancy .pct {
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+
+    .occupancy .label {
+      font-size: 0.875rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #333;
+    }
+
+    .pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .pill {
+      background: #2a2a2a;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.875rem;
+    }
+
+    .bar {
+      height: 8px;
+      background: #333;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+
+    .bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #ff6b6b, #feca57);
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .selector {
+      margin-bottom: 16px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #111;
+      color: #fff;
+      font-size: 1rem;
+    }
+
+    .muted {
+      color: #666;
+      font-size: 0.875rem;
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <h1>🎛️ VibeCheck</h1>
@@ -44,7 +182,10 @@
     </div>
 
     <div class="signals" id="signals">
-      <div class="card"><h2>Occupancy</h2><p class="muted">Waiting for data…</p></div>
+      <div class="card">
+        <h2>Occupancy</h2>
+        <p class="muted">Waiting for data…</p>
+      </div>
     </div>
   </div>
 
@@ -52,9 +193,8 @@
     // Dynamic base URLs: works on localhost, LAN IP, and ngrok
     const urlParams = new URLSearchParams(window.location.search);
     const HLS_HOST = urlParams.get('hls') || `${window.location.hostname}:8081`;
-    const API_BASE = '/api';
+    const API_BASE = '';  // API served from same origin (FastAPI)
     let hls = null;
-    let ws = null;
 
     async function loadVenues() {
       const res = await fetch(`${API_BASE}/venues`);
@@ -80,40 +220,13 @@
         video.src = streamUrl;
         video.addEventListener('loadedmetadata', () => video.play());
       }
-      setupWebSocket(venueId);
+      pollSignals(venueId);
     }
 
-    function setupWebSocket(venueId) {
-      if (ws) {
-        ws.close();
-      }
-      
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      // Handle local run (port 8000 directly) vs Nginx (proxy via /api)
-      const isLocalhost8000 = window.location.port === '8000';
-      const wsUrl = isLocalhost8000 
-          ? `${protocol}//${window.location.host}/venues/${venueId}/signals/ws`
-          : `${protocol}//${window.location.host}${API_BASE}/venues/${venueId}/signals/ws`;
-          
-      ws = new WebSocket(wsUrl);
-      
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        renderSignals(data, venueId);
-      };
-      
-      ws.onclose = () => {
-        console.log("WebSocket closed. Reconnecting in 5s...");
-        setTimeout(() => {
-          const sel = document.getElementById('venueSelect');
-          if (sel && sel.value === venueId) setupWebSocket(venueId);
-        }, 5000);
-      };
-      
-      ws.onerror = (err) => {
-        console.error("WebSocket error:", err);
-        ws.close();
-      };
+    async function pollSignals(venueId) {
+      const res = await fetch(`${API_BASE}/venues/${venueId}/signals`);
+      const data = await res.json();
+      renderSignals(data, venueId);
     }
 
     function renderSignals(data, venueId) {
@@ -186,6 +299,11 @@
     }
 
     loadVenues();
+    setInterval(() => {
+      const sel = document.getElementById('venueSelect');
+      if (sel) pollSignals(sel.value);
+    }, 5000);
   </script>
 </body>
+
 </html>
