@@ -1,0 +1,1806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VibeCheck ∞ — The Reality Layer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Space Grotesk', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        vibe: {
+                            dark: '#050508',
+                            darker: '#020203',
+                            card: '#0c0c14',
+                            surface: '#12121c',
+                            accent: '#ff4d00',
+                            accentGlow: '#ff6b35',
+                            hot: '#ff0055',
+                            success: '#00ff88',
+                            warning: '#ffcc00',
+                            info: '#00e5ff',
+                            purple: '#b829dd',
+                            pink: '#ff2d95',
+                            cyan: '#00f0ff',
+                            lime: '#ccff00',
+                        }
+                    },
+                    animation: {
+                        'pulse-fast': 'pulseFast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'pulse-slow': 'pulseSlow 3s ease-in-out infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                        'glitch': 'glitch 3s infinite',
+                        'scan': 'scan 3s linear infinite',
+                        'morph': 'morph 8s ease-in-out infinite',
+                        'spin-slow': 'spin 8s linear infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'shake': 'shake 0.5s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                        'slide-up': 'slideUp 0.5s ease-out forwards',
+                        'count-up': 'countUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        pulseFast: {
+                            '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                            '50%': { opacity: 0.7, transform: 'scale(1.05)' },
+                        },
+                        pulseSlow: {
+                            '0%, 100%': { opacity: 0.6 },
+                            '50%': { opacity: 1 },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+                            '33%': { transform: 'translateY(-8px) rotate(1deg)' },
+                            '66%': { transform: 'translateY(4px) rotate(-1deg)' },
+                        },
+                        glitch: {
+                            '0%, 100%': { transform: 'translate(0)' },
+                            '20%': { transform: 'translate(-2px, 2px)' },
+                            '40%': { transform: 'translate(-2px, -2px)' },
+                            '60%': { transform: 'translate(2px, 2px)' },
+                            '80%': { transform: 'translate(2px, -2px)' },
+                        },
+                        scan: {
+                            '0%': { transform: 'translateY(-100%)' },
+                            '100%': { transform: 'translateY(100vh)' },
+                        },
+                        morph: {
+                            '0%, 100%': { borderRadius: '60% 40% 30% 70% / 60% 30% 70% 40%' },
+                            '50%': { borderRadius: '30% 60% 70% 40% / 50% 60% 30% 60%' },
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-3px)' },
+                            '75%': { transform: 'translateX(3px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(255,77,0,0.3), 0 0 10px rgba(255,77,0,0.1)' },
+                            '100%': { boxShadow: '0 0 20px rgba(255,77,0,0.6), 0 0 40px rgba(255,77,0,0.3), 0 0 60px rgba(255,77,0,0.1)' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: 0, transform: 'translateY(40px) scale(0.95)' },
+                            '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
+                        },
+                        countUp: {
+                            '0%': { opacity: 0, transform: 'translateY(20px)' },
+                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * { -webkit-tap-highlight-color: transparent; }
+        body {
+            background: #050508;
+            color: #fff;
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            background: rgba(12, 12, 20, 0.75);
+            backdrop-filter: blur(24px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .glass-strong {
+            background: rgba(12, 12, 20, 0.92);
+            backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .neon-border {
+            box-shadow: inset 0 0 20px rgba(255, 77, 0, 0.05), 0 0 0 1px rgba(255, 77, 0, 0.15);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(255, 77, 0, 0.5), 0 0 30px rgba(255, 77, 0, 0.2), 0 0 60px rgba(255, 77, 0, 0.1);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #ff4d00 0%, #ff2d95 50%, #b829dd 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .gradient-text-cyan {
+            background: linear-gradient(135deg, #00f0ff 0%, #00e5ff 50%, #00ff88 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .live-pulse {
+            background: linear-gradient(135deg, #ff0055, #ff4d00);
+            animation: pulseFast 1.5s infinite;
+        }
+
+        .venue-card {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            transform-style: preserve-3d;
+        }
+
+        .venue-card:hover {
+            transform: translateY(-12px) scale(1.03) rotateX(2deg);
+            box-shadow: 0 30px 80px rgba(255, 77, 0, 0.25), 0 0 0 1px rgba(255, 77, 0, 0.3);
+        }
+
+        .venue-card:active {
+            transform: scale(0.98);
+        }
+
+        .mirror-frame {
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            background: #000;
+        }
+
+        .mirror-frame::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 50%, rgba(5,5,8,0.95) 100%);
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .mirror-frame::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            box-shadow: inset 0 0 60px rgba(255, 77, 0, 0.1);
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .scanline {
+            position: absolute;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 77, 0, 0.4), transparent);
+            animation: scan 4s linear infinite;
+            z-index: 4;
+            pointer-events: none;
+        }
+
+        .noise-overlay {
+            position: absolute;
+            inset: 0;
+            opacity: 0.03;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .energy-wave {
+            background: linear-gradient(180deg, rgba(255,0,85,0) 0%, rgba(255,0,85,0.6) 50%, rgba(255,0,85,0) 100%);
+            animation: float 2s ease-in-out infinite;
+        }
+
+        .vibe-pill {
+            background: linear-gradient(135deg, rgba(255, 77, 0, 0.15), rgba(184, 41, 221, 0.08));
+            border: 1px solid rgba(255, 77, 0, 0.25);
+            backdrop-filter: blur(8px);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .vibe-pill:hover {
+            background: linear-gradient(135deg, rgba(255, 77, 0, 0.3), rgba(184, 41, 221, 0.15));
+            transform: scale(1.08) translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255, 77, 0, 0.2);
+        }
+
+        .stat-glow {
+            box-shadow: 0 0 30px rgba(0, 229, 255, 0.15);
+        }
+
+        .progress-radial {
+            transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tab-indicator {
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .grid-bg {
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            opacity: 0.4;
+        }
+
+        .fomo-banner {
+            background: linear-gradient(90deg, rgba(255,0,85,0.1), rgba(255,77,0,0.1), rgba(184,41,221,0.1));
+            background-size: 200% 100%;
+            animation: shimmer 3s linear infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .ticket-notch {
+            position: relative;
+        }
+        .ticket-notch::before,
+        .ticket-notch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #050508;
+            border-radius: 50%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .ticket-notch::before { left: -10px; }
+        .ticket-notch::after { right: -10px; }
+
+        .heatmap-dot {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(12px);
+            animation: pulseSlow 2s ease-in-out infinite;
+        }
+
+        .marquee {
+            display: flex;
+            animation: marquee 20s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .countdown-digit {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .swipe-hint {
+            animation: swipeHint 2s ease-in-out infinite;
+        }
+
+        @keyframes swipeHint {
+            0%, 100% { transform: translateX(0); opacity: 0.5; }
+            50% { transform: translateX(10px); opacity: 1; }
+        }
+
+        .modal-enter {
+            animation: modalEnter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes modalEnter {
+            0% { opacity: 0; transform: scale(0.9) translateY(20px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .badge-shine {
+            position: relative;
+            overflow: hidden;
+        }
+        .badge-shine::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-vibe-accent selection:text-white">
+    <!-- Ambient Orbs -->
+    <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+        <div class="orb w-96 h-96 bg-vibe-accent/20 top-[-10%] left-[-10%] animate-morph"></div>
+        <div class="orb w-80 h-80 bg-vibe-purple/15 top-[40%] right-[-5%] animate-morph" style="animation-delay: -2s;"></div>
+        <div class="orb w-64 h-64 bg-vibe-hot/10 bottom-[-5%] left-[30%] animate-morph" style="animation-delay: -4s;"></div>
+    </div>
+
+    <div class="fixed inset-0 grid-bg pointer-events-none z-0"></div>
+
+    <!-- ========== NAVIGATION ========== -->
+    <nav class="fixed top-0 w-full z-50 glass-strong">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-vibe-accent to-vibe-purple flex items-center justify-center relative overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-vibe-accent to-vibe-purple animate-pulse-slow opacity-50"></div>
+                        <i data-lucide="activity" class="w-5 h-5 text-white relative z-10"></i>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="font-display font-bold text-xl tracking-tight leading-none">
+                            Vibe<span class="gradient-text">Check</span>
+                        </span>
+                        <span class="text-[9px] text-gray-500 font-mono tracking-widest uppercase">Reality Layer v2.0</span>
+                    </div>
+                </div>
+
+                <div class="hidden md:flex items-center gap-1 bg-white/5 rounded-2xl p-1 border border-white/5">
+                    <button onclick="switchTab('discover')" id="nav-discover" class="tab-btn px-5 py-2 rounded-xl text-sm font-medium transition-all bg-vibe-accent/20 text-vibe-accent border border-vibe-accent/30">
+                        Discover
+                    </button>
+                    <button onclick="switchTab('map')" id="nav-map" class="tab-btn px-5 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-all">
+                        Heat Map
+                    </button>
+                    <button onclick="switchTab('social')" id="nav-social" class="tab-btn px-5 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-all relative">
+                        Social
+                        <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-vibe-hot text-white text-[9px] font-bold flex items-center justify-center">3</span>
+                    </button>
+                    <button onclick="switchTab('owner')" id="nav-owner" class="tab-btn px-5 py-2 rounded-xl text-sm font-medium text-gray-400 hover:text-white transition-all">
+                        Owner
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-vibe-success/10 border border-vibe-success/20 text-vibe-success text-xs font-semibold">
+                        <span class="w-2 h-2 rounded-full bg-vibe-success animate-pulse"></span>
+                        97 LIVE
+                    </button>
+                    <button class="w-10 h-10 rounded-xl glass flex items-center justify-center hover:bg-white/5 transition-colors relative">
+                        <i data-lucide="bell" class="w-5 h-5 text-gray-300"></i>
+                        <span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-vibe-hot"></span>
+                    </button>
+                    <button class="w-10 h-10 rounded-xl bg-gradient-to-br from-vibe-accent to-vibe-hot flex items-center justify-center text-white font-bold text-sm">
+                        P
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ========== DISCOVER TAB ========== -->
+    <div id="tab-discover" class="tab-content">
+        <!-- HERO -->
+        <section class="relative pt-28 pb-12 px-4 sm:px-6 z-10">
+            <div class="max-w-7xl mx-auto">
+                <!-- FOMO Ticker -->
+                <div class="fomo-banner rounded-2xl p-4 mb-8 border border-white/5 flex items-center gap-4 overflow-hidden">
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span class="w-2 h-2 rounded-full bg-vibe-hot animate-pulse"></span>
+                        <span class="text-xs font-mono text-vibe-hot font-semibold">LIVE ACTIVITY</span>
+                    </div>
+                    <div class="overflow-hidden flex-1 relative">
+                        <div class="marquee whitespace-nowrap">
+                            <span class="text-sm text-gray-400 mx-8">🔥 <span class="text-white font-semibold">Sarah K.</span> just checked into <span class="text-vibe-accent">Neon Underground</span></span>
+                            <span class="text-sm text-gray-400 mx-8">⚡ <span class="text-white font-semibold">Pulse Nightclub</span> hit <span class="text-vibe-hot font-bold">RAGING</span> energy</span>
+                            <span class="text-sm text-gray-400 mx-8">🎵 Now playing at <span class="text-white font-semibold">The Velvet Room</span>: <span class="text-vibe-cyan">"Midnight City" — M83</span></span>
+                            <span class="text-sm text-gray-400 mx-8">📍 <span class="text-white font-semibold">247 people</span> are deciding where to go right now</span>
+                            <span class="text-sm text-gray-400 mx-8">🔥 <span class="text-white font-semibold">Sarah K.</span> just checked into <span class="text-vibe-accent">Neon Underground</span></span>
+                            <span class="text-sm text-gray-400 mx-8">⚡ <span class="text-white font-semibold">Pulse Nightclub</span> hit <span class="text-vibe-hot font-bold">RAGING</span> energy</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hero Content -->
+                <div class="text-center mb-12">
+                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border border-vibe-accent/20 mb-6 badge-shine">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-vibe-accent"></i>
+                        <span class="text-sm text-vibe-accentGlow font-medium">The world's first real-time venue layer</span>
+                    </div>
+                    <h1 class="font-display font-bold text-5xl sm:text-7xl lg:text-8xl mb-6 leading-[0.95]">
+                        See the night<br>
+                        <span class="gradient-text neon-text">before it happens.</span>
+                    </h1>
+                    <p class="text-lg sm:text-xl text-gray-500 max-w-xl mx-auto mb-10 leading-relaxed">
+                        Live crowds. Real energy. Actual music. No filters, no old photos, no guesswork. 
+                        <span class="text-white font-medium">Just truth.</span>
+                    </p>
+
+                    <!-- Quick Stats -->
+                    <div class="flex flex-wrap justify-center gap-4 mb-10">
+                        <div class="glass rounded-2xl px-6 py-4 border border-white/5 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-vibe-accent/10 flex items-center justify-center">
+                                <i data-lucide="radio" class="w-6 h-6 text-vibe-accent"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="text-2xl font-display font-bold">97</div>
+                                <div class="text-xs text-gray-500">Venues Streaming</div>
+                            </div>
+                        </div>
+                        <div class="glass rounded-2xl px-6 py-4 border border-white/5 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-vibe-info/10 flex items-center justify-center">
+                                <i data-lucide="eye" class="w-6 h-6 text-vibe-info"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="text-2xl font-display font-bold">3,421</div>
+                                <div class="text-xs text-gray-500">Watching Now</div>
+                            </div>
+                        </div>
+                        <div class="glass rounded-2xl px-6 py-4 border border-white/5 flex items-center gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-vibe-success/10 flex items-center justify-center">
+                                <i data-lucide="navigation" class="w-6 h-6 text-vibe-success"></i>
+                            </div>
+                            <div class="text-left">
+                                <div class="text-2xl font-display font-bold">892</div>
+                                <div class="text-xs text-gray-500">En Route Tonight</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FILTERS -->
+        <section class="sticky top-16 z-40 px-4 sm:px-6 py-3 glass-strong border-b border-white/5">
+            <div class="max-w-7xl mx-auto flex items-center gap-3 overflow-x-auto hide-scrollbar">
+                <button class="shrink-0 px-5 py-2.5 rounded-xl bg-vibe-accent/15 border border-vibe-accent/30 text-vibe-accent text-sm font-semibold flex items-center gap-2">
+                    <i data-lucide="flame" class="w-4 h-4"></i> All Live
+                </button>
+                <button class="shrink-0 px-5 py-2.5 rounded-xl glass border border-white/5 text-gray-400 text-sm font-medium hover:text-white hover:border-white/10 transition-all flex items-center gap-2">
+                    <i data-lucide="music" class="w-4 h-4"></i> Clubs
+                </button>
+                <button class="shrink-0 px-5 py-2.5 rounded-xl glass border border-white/5 text-gray-400 text-sm font-medium hover:text-white hover:border-white/10 transition-all flex items-center gap-2">
+                    <i data-lucide="wine" class="w-4 h-4"></i> Bars
+                </button>
+                <button class="shrink-0 px-5 py-2.5 rounded-xl glass border border-white/5 text-gray-400 text-sm font-medium hover:text-white hover:border-white/10 transition-all flex items-center gap-2">
+                    <i data-lucide="coffee" class="w-4 h-4"></i> Cafés
+                </button>
+                <div class="shrink-0 h-6 w-px bg-white/10 mx-1"></div>
+                <button class="shrink-0 px-5 py-2.5 rounded-xl glass border border-white/5 text-gray-400 text-sm font-medium hover:text-white hover:border-white/10 transition-all flex items-center gap-2">
+                    <i data-lucide="zap" class="w-4 h-4"></i> High Energy
+                </button>
+                <button class="shrink-0 px-5 py-2.5 rounded-xl glass border border-white/5 text-gray-400 text-sm font-medium hover:text-white hover:border-white/10 transition-all flex items-center gap-2">
+                    <i data-lucide="clock" class="w-4 h-4"></i> Peaking Soon
+                </button>
+                <button class="shrink-0 px-5 py-2.5 rounded-xl glass border border-white/5 text-gray-400 text-sm font-medium hover:text-white hover:border-white/10 transition-all flex items-center gap-2">
+                    <i data-lucide="ticket" class="w-4 h-4"></i> Flash Deals
+                </button>
+            </div>
+        </section>
+
+        <!-- VENUE GRID -->
+        <section class="relative z-10 px-4 sm:px-6 py-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 class="font-display font-bold text-2xl sm:text-3xl">Trending Now</h2>
+                        <p class="text-sm text-gray-500 mt-1">Ranked by live energy + social velocity</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs text-gray-500">
+                        <span class="w-2 h-2 rounded-full bg-vibe-success animate-pulse"></span>
+                        Auto-refreshing
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="venue-grid">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+        </section>
+
+        <!-- FEATURED DEEP DIVE -->
+        <section class="relative z-10 px-4 sm:px-6 py-16" id="featured-venue">
+            <div class="max-w-7xl mx-auto">
+                <div class="glass rounded-3xl overflow-hidden border border-white/8 neon-border">
+                    <!-- THE MIRROR -->
+                    <div class="mirror-frame relative h-72 sm:h-[28rem] bg-black">
+                        <div class="noise-overlay"></div>
+                        <div class="scanline"></div>
+
+                        <!-- Simulated Live Feed Visual -->
+                        <div class="absolute inset-0">
+                            <div class="absolute inset-0 bg-gradient-to-br from-vibe-purple/30 via-vibe-accent/10 to-vibe-hot/20"></div>
+                            <!-- Crowd particles -->
+                            <div id="crowd-particles"></div>
+                            <!-- Floor grid -->
+                            <div class="absolute bottom-0 left-0 right-0 h-1/2" style="background: linear-gradient(to top, rgba(255,77,0,0.1) 0%, transparent 100%); perspective: 500px;">
+                                <div class="w-full h-full" style="background-image: linear-gradient(rgba(255,77,0,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,77,0,0.1) 1px, transparent 1px); background-size: 40px 40px; transform: rotateX(60deg); transform-origin: bottom;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Top HUD -->
+                        <div class="absolute top-4 left-4 right-4 z-20 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="live-pulse px-4 py-2 rounded-full flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+                                    <span class="text-xs font-bold text-white tracking-wider">LIVE</span>
+                                </div>
+                                <div class="glass px-3 py-2 rounded-full flex items-center gap-2">
+                                    <i data-lucide="wifi" class="w-3 h-3 text-vibe-success"></i>
+                                    <span class="text-xs text-white/80 font-mono" id="latency-display">1.8s</span>
+                                </div>
+                                <div class="glass px-3 py-2 rounded-full flex items-center gap-2">
+                                    <i data-lucide="shield-check" class="w-3 h-3 text-vibe-success"></i>
+                                    <span class="text-xs text-white/60">Privacy On</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="glass p-2.5 rounded-full hover:bg-white/10 transition-colors">
+                                    <i data-lucide="picture-in-picture" class="w-5 h-5 text-white"></i>
+                                </button>
+                                <button class="glass p-2.5 rounded-full hover:bg-white/10 transition-colors">
+                                    <i data-lucide="maximize-2" class="w-5 h-5 text-white"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Camera Switcher -->
+                        <div class="absolute top-20 left-4 z-20 flex flex-col gap-2">
+                            <button class="glass p-2 rounded-lg border border-vibe-accent/50 bg-vibe-accent/20">
+                                <i data-lucide="video" class="w-4 h-4 text-vibe-accent"></i>
+                            </button>
+                            <button class="glass p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                <i data-lucide="scan" class="w-4 h-4 text-white/50"></i>
+                            </button>
+                            <button class="glass p-2 rounded-lg hover:bg-white/5 transition-colors">
+                                <i data-lucide="door-open" class="w-4 h-4 text-white/50"></i>
+                            </button>
+                        </div>
+
+                        <!-- Bottom HUD -->
+                        <div class="absolute bottom-0 left-0 right-0 z-20 p-6 sm:p-8">
+                            <div class="flex items-end justify-between">
+                                <div class="max-w-lg">
+                                    <div class="flex items-center gap-3 mb-3">
+                                        <span class="px-3 py-1 rounded-lg bg-vibe-purple/20 border border-vibe-purple/30 text-vibe-purple text-xs font-bold tracking-wider">CLUB</span>
+                                        <div class="flex items-center gap-1 text-vibe-warning">
+                                            <i data-lucide="star" class="w-3.5 h-3.5 fill-current"></i>
+                                            <span class="text-sm font-bold">4.9</span>
+                                            <span class="text-xs text-gray-500">(2.4k)</span>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded bg-vibe-hot/10 text-vibe-hot text-[10px] font-bold">TRENDING #1</span>
+                                    </div>
+                                    <h3 class="font-display font-bold text-4xl sm:text-5xl text-white mb-2 tracking-tight">Neon Underground</h3>
+                                    <div class="flex items-center gap-4 text-sm text-gray-400">
+                                        <span class="flex items-center gap-1.5">
+                                            <i data-lucide="map-pin" class="w-4 h-4"></i>
+                                            Downtown Arts District
+                                        </span>
+                                        <span class="flex items-center gap-1.5">
+                                            <i data-lucide="navigation" class="w-4 h-4"></i>
+                                            0.8 mi
+                                        </span>
+                                        <span class="flex items-center gap-1.5 text-vibe-success">
+                                            <i data-lucide="door-open" class="w-4 h-4"></i>
+                                            No Queue
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="hidden sm:flex items-center gap-6">
+                                    <div class="text-center">
+                                        <div class="text-4xl font-display font-bold text-vibe-accent countdown-digit" id="featured-occupancy">94</div>
+                                        <div class="text-xs text-gray-500 mt-1">% Full</div>
+                                    </div>
+                                    <div class="w-px h-12 bg-white/10"></div>
+                                    <div class="text-center">
+                                        <div class="text-4xl font-display font-bold text-vibe-hot countdown-digit" id="featured-energy">87</div>
+                                        <div class="text-xs text-gray-500 mt-1">Energy</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SIGNAL DASHBOARD -->
+                    <div class="p-6 sm:p-8">
+                        <!-- Top Row: Occupancy + Forecast + Demographics -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                            <!-- Occupancy with Forecast -->
+                            <div class="glass rounded-2xl p-6 border border-white/5">
+                                <div class="flex items-center justify-between mb-5">
+                                    <h4 class="font-semibold text-gray-300 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                        <i data-lucide="users" class="w-4 h-4 text-vibe-accent"></i>
+                                        Occupancy
+                                    </h4>
+                                    <span class="text-[10px] text-gray-600 font-mono">UPDATED 12s AGO</span>
+                                </div>
+                                <div class="flex items-center gap-6">
+                                    <div class="relative w-28 h-28">
+                                        <svg class="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
+                                            <defs>
+                                                <linearGradient id="occGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                    <stop offset="0%" style="stop-color:#ff4d00"/>
+                                                    <stop offset="100%" style="stop-color:#ff0055"/>
+                                                </linearGradient>
+                                            </defs>
+                                            <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="6"/>
+                                            <circle cx="50" cy="50" r="42" fill="none" stroke="url(#occGrad)" stroke-width="6" 
+                                                    stroke-dasharray="264" stroke-dashoffset="15.8" stroke-linecap="round" class="progress-radial"/>
+                                        </svg>
+                                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                                            <span class="text-3xl font-display font-bold">94%</span>
+                                            <span class="text-[10px] text-vibe-hot font-bold">PACKED</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="text-sm text-gray-400 mb-3">~188 people inside</div>
+                                        <!-- Forecast Mini-Chart -->
+                                        <div class="mb-2">
+                                            <div class="flex items-center justify-between text-[10px] text-gray-500 mb-1">
+                                                <span>Arrival Forecast</span>
+                                                <span class="text-vibe-success">+23 in 30min</span>
+                                            </div>
+                                            <div class="flex items-end gap-1 h-10">
+                                                <div class="flex-1 bg-white/5 rounded-sm" style="height: 40%"></div>
+                                                <div class="flex-1 bg-white/5 rounded-sm" style="height: 55%"></div>
+                                                <div class="flex-1 bg-white/5 rounded-sm" style="height: 70%"></div>
+                                                <div class="flex-1 bg-white/5 rounded-sm" style="height: 85%"></div>
+                                                <div class="flex-1 bg-vibe-accent/40 rounded-sm relative" style="height: 94%">
+                                                    <div class="absolute -top-4 left-1/2 -translate-x-1/2 text-[9px] text-vibe-accent font-bold">NOW</div>
+                                                </div>
+                                                <div class="flex-1 bg-vibe-success/20 rounded-sm" style="height: 100%"></div>
+                                                <div class="flex-1 bg-vibe-success/15 rounded-sm" style="height: 95%"></div>
+                                            </div>
+                                            <div class="flex justify-between text-[9px] text-gray-600 mt-1">
+                                                <span>10PM</span><span>11PM</span><span>12AM</span><span>1AM</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Demographics -->
+                            <div class="glass rounded-2xl p-6 border border-white/5">
+                                <div class="flex items-center justify-between mb-5">
+                                    <h4 class="font-semibold text-gray-300 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                        <i data-lucide="scan-face" class="w-4 h-4 text-vibe-info"></i>
+                                        Crowd DNA
+                                    </h4>
+                                    <span class="text-[10px] text-gray-600 font-mono">5MIN WINDOW</span>
+                                </div>
+                                <div class="space-y-5">
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs text-gray-400">Age Distribution</span>
+                                            <span class="text-xs font-semibold text-white">Mostly 25-34</span>
+                                        </div>
+                                        <div class="flex gap-1 h-3 rounded-full overflow-hidden">
+                                            <div class="bg-vibe-purple/50" style="width: 12%"></div>
+                                            <div class="bg-vibe-accent" style="width: 58%"></div>
+                                            <div class="bg-vibe-success/60" style="width: 22%"></div>
+                                            <div class="bg-gray-700" style="width: 8%"></div>
+                                        </div>
+                                        <div class="flex justify-between mt-1.5 text-[10px] text-gray-600">
+                                            <span>18-24</span><span class="text-vibe-accent font-medium">25-34</span><span>35-49</span><span>50+</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex items-center justify-between mb-2">
+                                            <span class="text-xs text-gray-400">Gender Split</span>
+                                        </div>
+                                        <div class="h-3 rounded-full overflow-hidden flex">
+                                            <div class="bg-gradient-to-r from-vibe-info to-vibe-cyan" style="width: 52%"></div>
+                                            <div class="bg-gradient-to-r from-vibe-pink to-vibe-hot" style="width: 48%"></div>
+                                        </div>
+                                        <div class="flex justify-between mt-1.5 text-xs">
+                                            <span class="text-vibe-cyan font-medium">52% Masc</span>
+                                            <span class="text-vibe-pink font-medium">48% Fem</span>
+                                        </div>
+                                    </div>
+                                    <div class="pt-3 border-t border-white/5">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-lg bg-vibe-lime/10 flex items-center justify-center">
+                                                <i data-lucide="shirt" class="w-4 h-4 text-vibe-lime"></i>
+                                            </div>
+                                            <div>
+                                                <div class="text-xs text-gray-400">Dress Code</div>
+                                                <div class="text-sm font-medium">Smart Casual / Street</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-700 mt-4 italic">Visual estimates only. No biometric data stored.</p>
+                            </div>
+
+                            <!-- Dance Floor + Music -->
+                            <div class="glass rounded-2xl p-6 border border-white/5">
+                                <div class="flex items-center justify-between mb-5">
+                                    <h4 class="font-semibold text-gray-300 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                        <i data-lucide="music" class="w-4 h-4 text-vibe-pink"></i>
+                                        Floor + Audio
+                                    </h4>
+                                    <span class="text-[10px] text-gray-600 font-mono">REAL-TIME</span>
+                                </div>
+
+                                <!-- Now Playing -->
+                                <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 mb-5">
+                                    <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-vibe-purple to-vibe-accent flex items-center justify-center relative overflow-hidden">
+                                        <div class="absolute inset-0 flex items-center justify-center gap-0.5">
+                                            <div class="w-1 bg-white/80 rounded-full animate-energy" style="height: 60%; animation-delay: 0s;"></div>
+                                            <div class="w-1 bg-white/80 rounded-full animate-energy" style="height: 80%; animation-delay: 0.2s;"></div>
+                                            <div class="w-1 bg-white/80 rounded-full animate-energy" style="height: 40%; animation-delay: 0.4s;"></div>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-semibold truncate">Midnight City</div>
+                                        <div class="text-xs text-gray-500 truncate">M83 • Hurry Up, We're Dreaming</div>
+                                    </div>
+                                    <button class="p-2 rounded-full hover:bg-white/5 transition-colors">
+                                        <i data-lucide="external-link" class="w-4 h-4 text-gray-400"></i>
+                                    </button>
+                                </div>
+
+                                <!-- Energy Meter -->
+                                <div class="flex items-center gap-4 mb-4">
+                                    <div class="relative">
+                                        <div class="w-14 h-14 rounded-full bg-vibe-hot/10 border-2 border-vibe-hot flex items-center justify-center animate-pulse-fast">
+                                            <i data-lucide="flame" class="w-7 h-7 text-vibe-hot"></i>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="text-2xl font-display font-bold text-vibe-hot">RAGING</div>
+                                        <div class="text-xs text-gray-500">Peak energy detected</div>
+                                    </div>
+                                </div>
+
+                                <!-- Energy Bars -->
+                                <div class="flex items-end gap-[3px] h-14">
+                                    ${Array(16).fill(0).map((_, i) => {
+                                        const heights = [35, 55, 75, 45, 85, 60, 90, 70, 95, 55, 80, 65, 88, 72, 92, 87];
+                                        const h = heights[i];
+                                        const intensity = h > 80 ? 'bg-vibe-hot' : h > 60 ? 'bg-vibe-accent' : 'bg-white/20';
+                                        return `<div class="flex-1 ${intensity} rounded-t-sm transition-all duration-300" style="height: ${h}%; animation-delay: ${i * 0.05}s;"></div>`;
+                                    }).join('')}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vibe Zones + Social Proof + Flash Deal -->
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Vibe Zones -->
+                            <div class="glass rounded-2xl p-6 border border-white/5">
+                                <h4 class="font-semibold text-gray-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                    <i data-lucide="sparkles" class="w-4 h-4 text-vibe-warning"></i>
+                                    Vibe Right Now
+                                </h4>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="vibe-pill px-4 py-2 rounded-full text-sm font-semibold text-vibe-accentGlow flex items-center gap-2 cursor-pointer">
+                                        <i data-lucide="zap" class="w-4 h-4"></i>
+                                        Deep House Set
+                                    </span>
+                                    <span class="vibe-pill px-4 py-2 rounded-full text-sm font-semibold text-vibe-accentGlow flex items-center gap-2 cursor-pointer">
+                                        <i data-lucide="glass-water" class="w-4 h-4"></i>
+                                        Cocktail Crowd
+                                    </span>
+                                    <span class="vibe-pill px-4 py-2 rounded-full text-sm font-semibold text-vibe-accentGlow flex items-center gap-2 cursor-pointer">
+                                        <i data-lucide="party-popper" class="w-4 h-4"></i>
+                                        Birthday Energy
+                                    </span>
+                                    <span class="vibe-pill px-4 py-2 rounded-full text-sm font-semibold text-vibe-info flex items-center gap-2 cursor-pointer">
+                                        <i data-lucide="heart" class="w-4 h-4"></i>
+                                        Date Night Friendly
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Social Proof -->
+                            <div class="glass rounded-2xl p-6 border border-white/5">
+                                <h4 class="font-semibold text-gray-300 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                    <i data-lucide="users" class="w-4 h-4 text-vibe-success"></i>
+                                    Who's Here
+                                </h4>
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="flex -space-x-2">
+                                        <div class="w-8 h-8 rounded-full bg-vibe-accent flex items-center justify-center text-xs font-bold border-2 border-vibe-dark">S</div>
+                                        <div class="w-8 h-8 rounded-full bg-vibe-purple flex items-center justify-center text-xs font-bold border-2 border-vibe-dark">M</div>
+                                        <div class="w-8 h-8 rounded-full bg-vibe-info flex items-center justify-center text-xs font-bold border-2 border-vibe-dark">J</div>
+                                        <div class="w-8 h-8 rounded-full bg-vibe-success flex items-center justify-center text-xs font-bold border-2 border-vibe-dark">A</div>
+                                        <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold border-2 border-vibe-dark text-gray-400">+47</div>
+                                    </div>
+                                    <div class="text-xs text-gray-400">
+                                        <span class="text-white font-medium">4 friends</span> + 47 others
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-vibe-success animate-pulse"></span>
+                                        <span class="text-gray-400">Sarah K. arrived <span class="text-white">2 min ago</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-vibe-accent animate-pulse"></span>
+                                        <span class="text-gray-400">Mike T. is <span class="text-white">en route</span></span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-vibe-info"></span>
+                                        <span class="text-gray-400">Jessica L. saved this <span class="text-white">venue</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Flash Deal -->
+                            <div class="glass rounded-2xl p-6 border border-vibe-lime/20 bg-vibe-lime/5 relative overflow-hidden">
+                                <div class="absolute top-0 right-0 w-20 h-20 bg-vibe-lime/10 rounded-full blur-2xl"></div>
+                                <div class="relative z-10">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="font-semibold text-vibe-lime flex items-center gap-2 text-sm uppercase tracking-wider">
+                                            <i data-lucide="zap" class="w-4 h-4"></i>
+                                            Flash Deal
+                                        </h4>
+                                        <span class="px-2 py-1 rounded bg-vibe-hot/20 text-vibe-hot text-[10px] font-bold animate-pulse">EXPIRES IN 12:34</span>
+                                    </div>
+                                    <div class="text-2xl font-display font-bold text-white mb-1">2-for-1 Cocktails</div>
+                                    <div class="text-sm text-gray-400 mb-4">Next 30 arrivals only • Bar area</div>
+                                    <div class="flex items-center gap-2 mb-4">
+                                        <div class="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                                            <div class="h-full bg-gradient-to-r from-vibe-lime to-vibe-success rounded-full" style="width: 73%"></div>
+                                        </div>
+                                        <span class="text-xs text-gray-500">22/30 left</span>
+                                    </div>
+                                    <button class="w-full py-3 rounded-xl bg-gradient-to-r from-vibe-lime to-vibe-success text-vibe-dark font-bold text-sm hover:shadow-lg hover:shadow-vibe-lime/30 transition-all flex items-center justify-center gap-2">
+                                        <i data-lucide="ticket" class="w-4 h-4"></i>
+                                        Claim Deal
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Bar -->
+                        <div class="mt-8 flex flex-col sm:flex-row gap-3">
+                            <button class="flex-1 py-4 rounded-2xl bg-gradient-to-r from-vibe-accent to-vibe-purple text-white font-bold text-lg hover:shadow-2xl hover:shadow-vibe-accent/40 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2">
+                                <i data-lucide="navigation" class="w-5 h-5"></i>
+                                Get Directions
+                            </button>
+                            <button class="flex-1 py-4 rounded-2xl glass border border-white/10 text-white font-bold text-lg hover:bg-white/5 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="share-2" class="w-5 h-5"></i>
+                                Share Vibe
+                            </button>
+                            <button class="px-6 py-4 rounded-2xl glass border border-white/10 text-white hover:bg-white/5 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="bookmark" class="w-5 h-5"></i>
+                            </button>
+                            <button class="px-6 py-4 rounded-2xl glass border border-vibe-hot/20 text-vibe-hot hover:bg-vibe-hot/10 transition-all flex items-center justify-center gap-2">
+                                <i data-lucide="bell-ring" class="w-5 h-5"></i>
+                                Alert Me
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VENUE BATTLE ARENA -->
+        <section class="relative z-10 px-4 sm:px-6 py-16">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-10">
+                    <span class="inline-block px-4 py-2 rounded-full glass border border-vibe-hot/20 text-vibe-hot text-sm font-bold mb-4">
+                        <i data-lucide="swords" class="w-4 h-4 inline mr-1"></i> VIBE BATTLES
+                    </span>
+                    <h2 class="font-display font-bold text-3xl sm:text-4xl mb-3">Tonight's Showdown</h2>
+                    <p class="text-gray-500">Real-time competition between venues. Crowds decide the winner.</p>
+                </div>
+
+                <div class="glass rounded-3xl p-6 sm:p-8 border border-white/5">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Challenger 1 -->
+                        <div class="relative">
+                            <div class="absolute -top-3 -left-3 px-3 py-1 rounded-lg bg-vibe-accent text-white text-xs font-bold">#1 RANKED</div>
+                            <div class="glass rounded-2xl p-6 border border-vibe-accent/20">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-vibe-accent to-vibe-hot flex items-center justify-center text-2xl font-display font-bold">
+                                        N
+                                    </div>
+                                    <div>
+                                        <div class="font-display font-bold text-xl">Neon Underground</div>
+                                        <div class="text-sm text-gray-500">Club • Downtown</div>
+                                    </div>
+                                    <div class="ml-auto text-right">
+                                        <div class="text-3xl font-display font-bold text-vibe-accent">2,847</div>
+                                        <div class="text-xs text-gray-500">Vibe Points</div>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Occupancy</span>
+                                        <span class="font-semibold text-vibe-accent">94%</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Energy Score</span>
+                                        <span class="font-semibold text-vibe-hot">87/100</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Social Velocity</span>
+                                        <span class="font-semibold text-vibe-success">+142/hr</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Check-ins (1hr)</span>
+                                        <span class="font-semibold text-white">89</span>
+                                    </div>
+                                </div>
+                                <div class="mt-6 h-3 rounded-full bg-white/5 overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-vibe-accent to-vibe-hot rounded-full" style="width: 78%"></div>
+                                </div>
+                                <div class="text-center mt-2 text-xs text-gray-500">Winning by 18%</div>
+                            </div>
+                        </div>
+
+                        <!-- VS Divider -->
+                        <div class="hidden md:flex items-center justify-center absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                            <div class="w-16 h-16 rounded-full bg-vibe-dark border-2 border-white/10 flex items-center justify-center font-display font-bold text-xl text-gray-400">VS</div>
+                        </div>
+
+                        <!-- Challenger 2 -->
+                        <div class="relative">
+                            <div class="glass rounded-2xl p-6 border border-white/5">
+                                <div class="flex items-center gap-4 mb-6">
+                                    <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-vibe-purple to-vibe-info flex items-center justify-center text-2xl font-display font-bold">
+                                        P
+                                    </div>
+                                    <div>
+                                        <div class="font-display font-bold text-xl">Pulse Nightclub</div>
+                                        <div class="text-sm text-gray-500">Club • Midtown</div>
+                                    </div>
+                                    <div class="ml-auto text-right">
+                                        <div class="text-3xl font-display font-bold text-vibe-purple">2,341</div>
+                                        <div class="text-xs text-gray-500">Vibe Points</div>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Occupancy</span>
+                                        <span class="font-semibold text-vibe-purple">88%</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Energy Score</span>
+                                        <span class="font-semibold text-vibe-accent">72/100</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Social Velocity</span>
+                                        <span class="font-semibold text-vibe-success">+98/hr</span>
+                                    </div>
+                                    <div class="flex items-center justify-between text-sm">
+                                        <span class="text-gray-400">Check-ins (1hr)</span>
+                                        <span class="font-semibold text-white">64</span>
+                                    </div>
+                                </div>
+                                <div class="mt-6 h-3 rounded-full bg-white/5 overflow-hidden">
+                                    <div class="h-full bg-gradient-to-r from-vibe-purple to-vibe-info rounded-full" style="width: 62%"></div>
+                                </div>
+                                <div class="text-center mt-2 text-xs text-gray-500">Trailing by 18%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 text-center">
+                        <p class="text-sm text-gray-500 mb-3">Vote with your feet. Check in to boost your venue's score.</p>
+                        <div class="flex justify-center gap-4">
+                            <button class="px-6 py-3 rounded-xl bg-vibe-accent/10 border border-vibe-accent/30 text-vibe-accent font-semibold hover:bg-vibe-accent/20 transition-all">
+                                I'm Team Neon
+                            </button>
+                            <button class="px-6 py-3 rounded-xl bg-vibe-purple/10 border border-vibe-purple/30 text-vibe-purple font-semibold hover:bg-vibe-purple/20 transition-all">
+                                I'm Team Pulse
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========== HEAT MAP TAB ========== -->
+    <div id="tab-map" class="tab-content hidden">
+        <section class="relative pt-24 pb-12 px-4 sm:px-6 z-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="text-center mb-8">
+                    <h2 class="font-display font-bold text-4xl mb-3">City <span class="gradient-text">Heat Map</span></h2>
+                    <p class="text-gray-500">Real-time energy distribution across the city</p>
+                </div>
+
+                <div class="glass rounded-3xl overflow-hidden border border-white/5 h-[600px] relative">
+                    <!-- Simulated Map -->
+                    <div class="absolute inset-0 bg-vibe-darker">
+                        <div class="absolute inset-0 grid-bg opacity-50"></div>
+                        <!-- Heat zones -->
+                        <div class="heatmap-dot w-64 h-64 bg-vibe-accent/20 top-[20%] left-[30%]"></div>
+                        <div class="heatmap-dot w-48 h-48 bg-vibe-hot/15 top-[40%] left-[55%]"></div>
+                        <div class="heatmap-dot w-32 h-32 bg-vibe-purple/20 top-[60%] left-[20%]"></div>
+                        <div class="heatmap-dot w-40 h-40 bg-vibe-success/10 top-[30%] left-[70%]"></div>
+
+                        <!-- Venue Pins -->
+                        <div class="absolute top-[25%] left-[35%] transform -translate-x-1/2 -translate-y-1/2">
+                            <div class="relative">
+                                <div class="w-4 h-4 rounded-full bg-vibe-accent animate-pulse-fast"></div>
+                                <div class="absolute inset-0 w-4 h-4 rounded-full bg-vibe-accent animate-ping opacity-30"></div>
+                                <div class="absolute top-5 left-1/2 -translate-x-1/2 whitespace-nowrap glass px-3 py-1.5 rounded-lg text-xs font-bold">Neon Underground • 94%</div>
+                            </div>
+                        </div>
+                        <div class="absolute top-[42%] left-[58%] transform -translate-x-1/2 -translate-y-1/2">
+                            <div class="relative">
+                                <div class="w-4 h-4 rounded-full bg-vibe-hot animate-pulse-fast"></div>
+                                <div class="absolute top-5 left-1/2 -translate-x-1/2 whitespace-nowrap glass px-3 py-1.5 rounded-lg text-xs font-bold">Pulse • 88%</div>
+                            </div>
+                        </div>
+                        <div class="absolute top-[62%] left-[22%] transform -translate-x-1/2 -translate-y-1/2">
+                            <div class="relative">
+                                <div class="w-3 h-3 rounded-full bg-vibe-success"></div>
+                                <div class="absolute top-4 left-1/2 -translate-x-1/2 whitespace-nowrap glass px-3 py-1.5 rounded-lg text-xs font-bold">Brew & Bloom • 45%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Map Controls -->
+                    <div class="absolute bottom-6 left-6 flex flex-col gap-2">
+                        <button class="w-10 h-10 rounded-xl glass flex items-center justify-center hover:bg-white/10 transition-colors">
+                            <i data-lucide="plus" class="w-5 h-5 text-white"></i>
+                        </button>
+                        <button class="w-10 h-10 rounded-xl glass flex items-center justify-center hover:bg-white/10 transition-colors">
+                            <i data-lucide="minus" class="w-5 h-5 text-white"></i>
+                        </button>
+                        <button class="w-10 h-10 rounded-xl glass flex items-center justify-center hover:bg-white/10 transition-colors">
+                            <i data-lucide="locate" class="w-5 h-5 text-white"></i>
+                        </button>
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="absolute bottom-6 right-6 glass rounded-xl p-4 border border-white/5">
+                        <div class="text-xs font-semibold text-gray-400 mb-3 uppercase tracking-wider">Energy Level</div>
+                        <div class="space-y-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-vibe-hot"></div>
+                                <span class="text-xs text-gray-400">Raging (80-100)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-vibe-accent"></div>
+                                <span class="text-xs text-gray-400">Active (60-79)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-vibe-warning"></div>
+                                <span class="text-xs text-gray-400">Warming (40-59)</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-vibe-success"></div>
+                                <span class="text-xs text-gray-400">Chill (0-39)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========== SOCIAL TAB ========== -->
+    <div id="tab-social" class="tab-content hidden">
+        <section class="relative pt-24 pb-12 px-4 sm:px-6 z-10">
+            <div class="max-w-7xl mx-auto">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left: Friend Activity -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="text-center lg:text-left mb-6">
+                            <h2 class="font-display font-bold text-3xl mb-2">Your <span class="gradient-text">Crew</span></h2>
+                            <p class="text-gray-500">See where your friends are tonight</p>
+                        </div>
+
+                        <!-- Friend Cards -->
+                        <div class="glass rounded-2xl p-5 border border-white/5 flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-vibe-accent to-vibe-hot flex items-center justify-center text-lg font-bold">S</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold">Sarah K.</span>
+                                    <span class="w-2 h-2 rounded-full bg-vibe-success animate-pulse"></span>
+                                </div>
+                                <div class="text-sm text-gray-400">At <span class="text-vibe-accent font-medium">Neon Underground</span> • 23 min</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">Vibe Score</div>
+                                <div class="text-lg font-display font-bold text-vibe-accent">94</div>
+                            </div>
+                            <button class="px-4 py-2 rounded-xl glass border border-white/10 text-sm hover:bg-white/5 transition-colors">
+                                Join
+                            </button>
+                        </div>
+
+                        <div class="glass rounded-2xl p-5 border border-white/5 flex items-center gap-4">
+                            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-vibe-purple to-vibe-info flex items-center justify-center text-lg font-bold">M</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold">Mike T.</span>
+                                    <span class="w-2 h-2 rounded-full bg-vibe-warning animate-pulse"></span>
+                                </div>
+                                <div class="text-sm text-gray-400">En route to <span class="text-vibe-purple font-medium">Pulse Nightclub</span> • 8 min away</div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-gray-500">ETA</div>
+                                <div class="text-lg font-display font-bold text-vibe-purple">8m</div>
+                            </div>
+                            <button class="px-4 py-2 rounded-xl glass border border-white/10 text-sm hover:bg-white/5 transition-colors">
+                                Track
+                            </button>
+                        </div>
+
+                        <div class="glass rounded-2xl p-5 border border-white/5 flex items-center gap-4 opacity-60">
+                            <div class="w-14 h-14 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center text-lg font-bold">J</div>
+                            <div class="flex-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold">Jessica L.</span>
+                                    <span class="w-2 h-2 rounded-full bg-gray-600"></span>
+                                </div>
+                                <div class="text-sm text-gray-400">Offline • Last at The Velvet Room</div>
+                            </div>
+                            <button class="px-4 py-2 rounded-xl glass border border-white/10 text-sm hover:bg-white/5 transition-colors">
+                                Ping
+                            </button>
+                        </div>
+
+                        <!-- Vibe Streak -->
+                        <div class="glass rounded-2xl p-6 border border-vibe-lime/20 bg-vibe-lime/5">
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-xl bg-vibe-lime/20 flex items-center justify-center">
+                                        <i data-lucide="flame" class="w-5 h-5 text-vibe-lime"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-semibold">Your Vibe Streak</div>
+                                        <div class="text-xs text-gray-500">Check into 3 venues this week</div>
+                                    </div>
+                                </div>
+                                <div class="text-3xl font-display font-bold text-vibe-lime">2<span class="text-lg text-gray-500">/3</span></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <div class="flex-1 h-12 rounded-xl bg-vibe-lime/20 flex items-center justify-center border border-vibe-lime/30">
+                                    <i data-lucide="check" class="w-6 h-6 text-vibe-lime"></i>
+                                </div>
+                                <div class="flex-1 h-12 rounded-xl bg-vibe-lime/20 flex items-center justify-center border border-vibe-lime/30">
+                                    <i data-lucide="check" class="w-6 h-6 text-vibe-lime"></i>
+                                </div>
+                                <div class="flex-1 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                                    <span class="text-gray-600 text-xs">FRI</span>
+                                </div>
+                                <div class="flex-1 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                                    <span class="text-gray-600 text-xs">SAT</span>
+                                </div>
+                                <div class="flex-1 h-12 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                                    <span class="text-gray-600 text-xs">SUN</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-3">Complete your streak to unlock <span class="text-vibe-lime font-medium">VIP early access</span> next week.</p>
+                        </div>
+                    </div>
+
+                    <!-- Right: Leaderboard -->
+                    <div>
+                        <div class="glass rounded-2xl p-6 border border-white/5 sticky top-24">
+                            <h3 class="font-display font-bold text-lg mb-1">City Leaderboard</h3>
+                            <p class="text-xs text-gray-500 mb-6">Top venues by vibe velocity</p>
+
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-vibe-accent/20 flex items-center justify-center text-vibe-accent font-bold text-sm">1</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-semibold truncate">Neon Underground</div>
+                                        <div class="text-xs text-gray-500">Club • 2,847 pts</div>
+                                    </div>
+                                    <div class="text-xs text-vibe-success font-medium">▲ 12%</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 font-bold text-sm">2</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-semibold truncate">Pulse Nightclub</div>
+                                        <div class="text-xs text-gray-500">Club • 2,341 pts</div>
+                                    </div>
+                                    <div class="text-xs text-vibe-success font-medium">▲ 8%</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 font-bold text-sm">3</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-semibold truncate">The Velvet Room</div>
+                                        <div class="text-xs text-gray-500">Bar • 1,892 pts</div>
+                                    </div>
+                                    <div class="text-xs text-vibe-hot font-medium">▼ 3%</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 font-bold text-sm">4</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-semibold truncate">Electric Garden</div>
+                                        <div class="text-xs text-gray-500">Club • 1,756 pts</div>
+                                    </div>
+                                    <div class="text-xs text-vibe-success font-medium">▲ 22%</div>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-gray-400 font-bold text-sm">5</div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="text-sm font-semibold truncate">Midnight Social</div>
+                                        <div class="text-xs text-gray-500">Bar • 1,234 pts</div>
+                                    </div>
+                                    <div class="text-xs text-gray-500 font-medium">—</div>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 pt-6 border-t border-white/5">
+                                <div class="text-xs text-gray-500 mb-3">Your Rank</div>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-vibe-accent to-vibe-purple flex items-center justify-center text-sm font-bold">P</div>
+                                    <div class="flex-1">
+                                        <div class="text-sm font-semibold">You</div>
+                                        <div class="text-xs text-gray-500">Explorer Tier</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-sm font-bold text-vibe-accent">#142</div>
+                                        <div class="text-xs text-gray-500">of 8,432</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========== OWNER TAB ========== -->
+    <div id="tab-owner" class="tab-content hidden">
+        <section class="relative pt-24 pb-12 px-4 sm:px-6 z-10">
+            <div class="max-w-7xl mx-auto">
+                <!-- Owner Header -->
+                <div class="text-center mb-12">
+                    <span class="inline-block px-4 py-2 rounded-full glass border border-vibe-purple/20 text-vibe-purple text-sm font-bold mb-4">
+                        <i data-lucide="crown" class="w-4 h-4 inline mr-1"></i> VENUE COMMAND CENTER
+                    </span>
+                    <h2 class="font-display font-bold text-4xl sm:text-5xl mb-4">
+                        Turn your cameras into<br><span class="gradient-text">revenue machines.</span>
+                    </h2>
+                    <p class="text-lg text-gray-500 max-w-2xl mx-auto">
+                        Real-time intelligence, dynamic pricing, automated marketing, and competitive analytics — 
+                        all from the CCTV you already own.
+                    </p>
+                </div>
+
+                <!-- Command Center Dashboard -->
+                <div class="glass rounded-3xl overflow-hidden border border-white/8 neon-border mb-12">
+                    <div class="border-b border-white/5 p-4 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-3 h-3 rounded-full bg-vibe-danger"></div>
+                            <div class="w-3 h-3 rounded-full bg-vibe-warning"></div>
+                            <div class="w-3 h-3 rounded-full bg-vibe-success"></div>
+                            <span class="text-sm text-gray-500 ml-2 font-mono">Neon Underground — Command Center</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-3 py-1 rounded-full bg-vibe-success/10 text-vibe-success text-xs font-semibold flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 rounded-full bg-vibe-success animate-pulse"></span>
+                                All Systems Online
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="p-6 sm:p-8">
+                        <!-- KPI Row -->
+                        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            <div class="glass rounded-2xl p-5 border border-white/5 hover:border-vibe-accent/20 transition-all group">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-500 uppercase tracking-wider">Revenue (Tonight)</span>
+                                    <i data-lucide="trending-up" class="w-4 h-4 text-vibe-success"></i>
+                                </div>
+                                <div class="text-3xl font-display font-bold text-white group-hover:text-vibe-accent transition-colors">$4,892</div>
+                                <div class="text-xs text-vibe-success mt-1">+23% vs last Friday</div>
+                            </div>
+                            <div class="glass rounded-2xl p-5 border border-white/5 hover:border-vibe-info/20 transition-all group">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-500 uppercase tracking-wider">Live Views</span>
+                                    <i data-lucide="eye" class="w-4 h-4 text-vibe-info"></i>
+                                </div>
+                                <div class="text-3xl font-display font-bold text-white group-hover:text-vibe-info transition-colors">1,247</div>
+                                <div class="text-xs text-vibe-success mt-1">+45% conversion rate</div>
+                            </div>
+                            <div class="glass rounded-2xl p-5 border border-white/5 hover:border-vibe-purple/20 transition-all group">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-500 uppercase tracking-wider">Avg Dwell Time</span>
+                                    <i data-lucide="clock" class="w-4 h-4 text-vibe-purple"></i>
+                                </div>
+                                <div class="text-3xl font-display font-bold text-white group-hover:text-vibe-purple transition-colors">3h 12m</div>
+                                <div class="text-xs text-gray-500 mt-1">+18m vs last week</div>
+                            </div>
+                            <div class="glass rounded-2xl p-5 border border-white/5 hover:border-vibe-hot/20 transition-all group">
+                                <div class="flex items-center justify-between mb-3">
+                                    <span class="text-xs text-gray-500 uppercase tracking-wider">Flash Deals Redeemed</span>
+                                    <i data-lucide="ticket" class="w-4 h-4 text-vibe-hot"></i>
+                                </div>
+                                <div class="text-3xl font-display font-bold text-white group-hover:text-vibe-hot transition-colors">47/50</div>
+                                <div class="text-xs text-vibe-success mt-1">$940 incremental revenue</div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <!-- Live Floor View -->
+                            <div class="lg:col-span-2 glass rounded-2xl p-6 border border-white/5">
+                                <div class="flex items-center justify-between mb-5">
+                                    <h3 class="font-semibold text-lg flex items-center gap-2">
+                                        <i data-lucide="scan" class="w-5 h-5 text-vibe-accent"></i>
+                                        Live Floor Intelligence
+                                    </h3>
+                                    <div class="flex gap-2">
+                                        <button class="px-3 py-1.5 rounded-lg bg-vibe-accent/10 text-vibe-accent text-xs font-medium">Main Floor</button>
+                                        <button class="px-3 py-1.5 rounded-lg glass text-gray-400 text-xs font-medium hover:text-white transition-colors">Bar</button>
+                                        <button class="px-3 py-1.5 rounded-lg glass text-gray-400 text-xs font-medium hover:text-white transition-colors">Entrance</button>
+                                    </div>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-4 mb-6">
+                                    <div class="glass rounded-xl p-4 text-center border border-white/5">
+                                        <div class="text-2xl font-display font-bold text-vibe-accent">94%</div>
+                                        <div class="text-xs text-gray-500 mt-1">Occupancy</div>
+                                    </div>
+                                    <div class="glass rounded-xl p-4 text-center border border-white/5">
+                                        <div class="text-2xl font-display font-bold text-vibe-hot">87</div>
+                                        <div class="text-xs text-gray-500 mt-1">Energy Score</div>
+                                    </div>
+                                    <div class="glass rounded-xl p-4 text-center border border-white/5">
+                                        <div class="text-2xl font-display font-bold text-vibe-success">4.2</div>
+                                        <div class="text-xs text-gray-500 mt-1">Drinks/person</div>
+                                    </div>
+                                </div>
+
+                                <!-- Zone Heatmap -->
+                                <div class="relative h-48 rounded-xl bg-vibe-darker border border-white/5 overflow-hidden">
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <div class="text-center">
+                                            <div class="text-sm text-gray-500 mb-2">Zone Density Visualization</div>
+                                            <div class="flex gap-4 justify-center">
+                                                <div class="w-20 h-20 rounded-xl bg-vibe-hot/30 border border-vibe-hot/50 flex items-center justify-center text-xs font-bold text-vibe-hot">Dance</div>
+                                                <div class="w-20 h-20 rounded-xl bg-vibe-accent/20 border border-vibe-accent/40 flex items-center justify-center text-xs font-bold text-vibe-accent">Bar</div>
+                                                <div class="w-20 h-20 rounded-xl bg-vibe-success/10 border border-vibe-success/30 flex items-center justify-center text-xs font-bold text-vibe-success">Lounge</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Quick Actions -->
+                            <div class="space-y-4">
+                                <div class="glass rounded-2xl p-6 border border-white/5">
+                                    <h3 class="font-semibold mb-4 flex items-center gap-2">
+                                        <i data-lucide="zap" class="w-4 h-4 text-vibe-lime"></i>
+                                        Quick Actions
+                                    </h3>
+                                    <div class="space-y-3">
+                                        <button class="w-full py-3 rounded-xl bg-vibe-lime/10 border border-vibe-lime/20 text-vibe-lime font-semibold text-sm hover:bg-vibe-lime/20 transition-all flex items-center justify-center gap-2">
+                                            <i data-lucide="ticket" class="w-4 h-4"></i>
+                                            Launch Flash Deal
+                                        </button>
+                                        <button class="w-full py-3 rounded-xl glass border border-white/10 text-white font-semibold text-sm hover:bg-white/5 transition-all flex items-center justify-center gap-2">
+                                            <i data-lucide="megaphone" class="w-4 h-4"></i>
+                                            Push Notification
+                                        </button>
+                                        <button class="w-full py-3 rounded-xl glass border border-white/10 text-white font-semibold text-sm hover:bg-white/5 transition-all flex items-center justify-center gap-2">
+                                            <i data-lucide="music" class="w-4 h-4"></i>
+                                            Update Music Tag
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="glass rounded-2xl p-6 border border-vibe-danger/20 bg-vibe-danger/5">
+                                    <h3 class="font-semibold text-vibe-danger mb-3 flex items-center gap-2">
+                                        <i data-lucide="eye-off" class="w-4 h-4"></i>
+                                        Privacy Blackout
+                                    </h3>
+                                    <p class="text-xs text-gray-400 mb-4">Instantly hide your venue from public view during private events or emergencies.</p>
+                                    <button class="w-full py-3 rounded-xl bg-vibe-danger/10 border border-vibe-danger/30 text-vibe-danger font-semibold text-sm hover:bg-vibe-danger/20 transition-all">
+                                        Activate Blackout
+                                    </button>
+                                </div>
+
+                                <div class="glass rounded-2xl p-6 border border-white/5">
+                                    <h3 class="font-semibold mb-3 flex items-center gap-2">
+                                        <i data-lucide="bar-chart-2" class="w-4 h-4 text-vibe-info"></i>
+                                        Competitor Intel
+                                    </h3>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-gray-400">Pulse Nightclub</span>
+                                            <span class="text-vibe-success font-medium">88% (-6%)</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-gray-400">Electric Garden</span>
+                                            <span class="text-vibe-success font-medium">96% (+2%)</span>
+                                        </div>
+                                        <div class="flex items-center justify-between text-sm">
+                                            <span class="text-gray-400">The Velvet Room</span>
+                                            <span class="text-vibe-warning font-medium">72% (-22%)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vibe Zone Editor -->
+                        <div class="mt-6 glass rounded-2xl p-6 border border-white/5">
+                            <div class="flex items-center justify-between mb-6">
+                                <h3 class="font-semibold text-lg flex items-center gap-2">
+                                    <i data-lucide="sparkles" class="w-5 h-5 text-vibe-warning"></i>
+                                    Vibe Zone Library
+                                </h3>
+                                <button class="px-4 py-2 rounded-xl bg-vibe-accent/10 text-vibe-accent text-sm font-medium hover:bg-vibe-accent/20 transition-all flex items-center gap-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                    Add Descriptor
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div class="glass rounded-xl p-4 border border-vibe-accent/20 bg-vibe-accent/5">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="w-10 h-10 rounded-lg bg-vibe-accent/10 flex items-center justify-center">
+                                            <i data-lucide="zap" class="w-5 h-5 text-vibe-accent"></i>
+                                        </div>
+                                        <span class="px-2 py-1 rounded bg-vibe-success/10 text-vibe-success text-[10px] font-bold">ACTIVE</span>
+                                    </div>
+                                    <div class="font-semibold mb-1">Deep House Set</div>
+                                    <div class="text-xs text-gray-500 mb-3">Dance floor > 70% + BPM 120-130 detected</div>
+                                    <div class="flex gap-2">
+                                        <span class="px-2 py-1 rounded bg-white/5 text-[10px] text-gray-400">Auto-trigger</span>
+                                        <span class="px-2 py-1 rounded bg-white/5 text-[10px] text-gray-400">Music ID</span>
+                                    </div>
+                                </div>
+
+                                <div class="glass rounded-xl p-4 border border-vibe-info/20 bg-vibe-info/5">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="w-10 h-10 rounded-lg bg-vibe-info/10 flex items-center justify-center">
+                                            <i data-lucide="glass-water" class="w-5 h-5 text-vibe-info"></i>
+                                        </div>
+                                        <span class="px-2 py-1 rounded bg-vibe-success/10 text-vibe-success text-[10px] font-bold">ACTIVE</span>
+                                    </div>
+                                    <div class="font-semibold mb-1">Cocktail Crowd</div>
+                                    <div class="text-xs text-gray-500 mb-3">Bar zone > 60% + age 25-34 dominant</div>
+                                    <div class="flex gap-2">
+                                        <span class="px-2 py-1 rounded bg-white/5 text-[10px] text-gray-400">Auto-trigger</span>
+                                        <span class="px-2 py-1 rounded bg-white/5 text-[10px] text-gray-400">Demographics</span>
+                                    </div>
+                                </div>
+
+                                <div class="glass rounded-xl p-4 border border-white/5 hover:border-vibe-purple/20 transition-all group cursor-pointer">
+                                    <div class="flex items-start justify-between mb-3">
+                                        <div class="w-10 h-10 rounded-lg bg-vibe-purple/10 flex items-center justify-center">
+                                            <i data-lucide="plus" class="w-5 h-5 text-vibe-purple"></i>
+                                        </div>
+                                    </div>
+                                    <div class="font-semibold text-vibe-purple mb-1">Create New</div>
+                                    <div class="text-xs text-gray-500">Define triggers, icons, and conditions</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Owner CTA -->
+                <div class="text-center">
+                    <div class="glass rounded-3xl p-12 border border-vibe-accent/20 relative overflow-hidden inline-block w-full max-w-3xl">
+                        <div class="absolute inset-0 bg-gradient-to-r from-vibe-accent/5 via-transparent to-vibe-purple/5"></div>
+                        <div class="relative z-10">
+                            <h3 class="font-display font-bold text-3xl mb-4">Ready to own the night?</h3>
+                            <p class="text-gray-400 mb-8 max-w-lg mx-auto">
+                                Join 100+ venues already using VibeCheck. Turn your existing CCTV into a 
+                                customer acquisition engine with zero hardware costs.
+                            </p>
+                            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                                <button class="px-8 py-4 rounded-2xl bg-gradient-to-r from-vibe-accent to-vibe-purple text-white font-bold text-lg hover:shadow-2xl hover:shadow-vibe-accent/40 transition-all transform hover:scale-105">
+                                    Apply for Pilot
+                                </button>
+                                <button class="px-8 py-4 rounded-2xl glass border border-white/10 text-white font-bold text-lg hover:bg-white/5 transition-all">
+                                    Schedule Demo
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-6">Limited to 100 founding venues. No setup fees. Cancel anytime.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- ========== FOOTER ========== -->
+    <footer class="relative z-10 border-t border-white/5 px-4 sm:px-6 py-12 mt-12">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-vibe-accent to-vibe-purple flex items-center justify-center">
+                        <i data-lucide="activity" class="w-4 h-4 text-white"></i>
+                    </div>
+                    <span class="font-display font-bold text-xl">
+                        Vibe<span class="gradient-text">Check</span>
+                    </span>
+                </div>
+                <div class="flex items-center gap-6 text-sm text-gray-600">
+                    <a href="#" class="hover:text-white transition-colors">Privacy</a>
+                    <a href="#" class="hover:text-white transition-colors">Terms</a>
+                    <a href="#" class="hover:text-white transition-colors">Venue Owners</a>
+                    <a href="#" class="hover:text-white transition-colors">API</a>
+                    <a href="#" class="hover:text-white transition-colors">Contact</a>
+                </div>
+                <div class="text-sm text-gray-700 font-mono">
+                    © 2026 VibeCheck Industries
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // ===== VENUE DATA =====
+        const venues = [
+            {
+                id: 1, name: "Neon Underground", type: "CLUB", typeColor: "vibe-purple",
+                rating: 4.9, distance: "0.8 mi", occupancy: 94, occupancyLabel: "Packed", occupancyColor: "vibe-hot",
+                danceFloor: "Raging", danceColor: "vibe-hot", vibes: ["Deep House Set", "Cocktail Crowd", "Birthday Energy"],
+                live: true, age: "25-34", gender: "52/48", energy: 87, queue: "No Queue",
+                music: "Midnight City — M83", deal: { active: true, text: "2-for-1 Cocktails", remaining: "22/30" },
+                friends: 4, trending: 1
+            },
+            {
+                id: 2, name: "The Velvet Room", type: "BAR", typeColor: "vibe-accent",
+                rating: 4.7, distance: "1.2 mi", occupancy: 72, occupancyLabel: "Busy", occupancyColor: "vibe-warning",
+                danceFloor: null, danceColor: null, vibes: ["Afterwork Wind-down", "Date Night", "Jazz Vibes"],
+                live: true, age: "30-45", gender: "48/52", energy: 45, queue: "5 min",
+                music: "Take Five — Dave Brubeck", deal: { active: false },
+                friends: 1, trending: 3
+            },
+            {
+                id: 3, name: "Pulse Nightclub", type: "CLUB", typeColor: "vibe-purple",
+                rating: 4.8, distance: "2.1 mi", occupancy: 88, occupancyLabel: "Packed", occupancyColor: "vibe-hot",
+                danceFloor: "Active", danceColor: "vibe-accent", vibes: ["EDM Night", "Student Energy", "Pre-drinks Mode"],
+                live: true, age: "18-24", gender: "55/45", energy: 72, queue: "10 min",
+                music: "Titanium — David Guetta", deal: { active: true, text: "Free Entry before 11PM", remaining: "8/50" },
+                friends: 2, trending: 2
+            },
+            {
+                id: 4, name: "Brew & Bloom", type: "CAFÉ", typeColor: "vibe-success",
+                rating: 4.5, distance: "0.3 mi", occupancy: 45, occupancyLabel: "Getting There", occupancyColor: "vibe-warning",
+                danceFloor: null, danceColor: null, vibes: ["Study Session", "Remote Work", "Chill Beats"],
+                live: true, age: "20-30", gender: "50/50", energy: 22, queue: "No Queue",
+                music: "Lo-fi Study Beats", deal: { active: true, text: "Happy Hour Coffee $2", remaining: "∞" },
+                friends: 0, trending: null
+            },
+            {
+                id: 5, name: "Midnight Social", type: "BAR", typeColor: "vibe-accent",
+                rating: 4.6, distance: "1.5 mi", occupancy: 61, occupancyLabel: "Busy", occupancyColor: "vibe-warning",
+                danceFloor: "Warming Up", danceColor: "vibe-warning", vibes: ["Craft Beer Night", "Trivia Tuesday", "Local Hangout"],
+                live: true, age: "25-40", gender: "60/40", energy: 38, queue: "No Queue",
+                music: "Indie Mix 2026", deal: { active: false },
+                friends: 0, trending: null
+            },
+            {
+                id: 6, name: "Electric Garden", type: "CLUB", typeColor: "vibe-purple",
+                rating: 4.9, distance: "3.2 mi", occupancy: 96, occupancyLabel: "Packed", occupancyColor: "vibe-hot",
+                danceFloor: "Raging", danceColor: "vibe-hot", vibes: ["Techno Temple", "Underground", "Peak Hours"],
+                live: true, age: "22-32", gender: "50/50", energy: 91, queue: "15 min",
+                music: "Unknown — Warehouse Set", deal: { active: true, text: "VIP Upgrade $20", remaining: "5/20" },
+                friends: 1, trending: 4
+            }
+        ];
+
+        // ===== RENDER VENUE CARDS =====
+        function renderVenues() {
+            const grid = document.getElementById('venue-grid');
+            grid.innerHTML = venues.map(v => `
+                <div class="venue-card glass rounded-2xl overflow-hidden border border-white/5 cursor-pointer group" onclick="scrollToFeatured()">
+                    <div class="relative h-52 overflow-hidden">
+                        <div class="absolute inset-0 bg-gradient-to-br from-${v.typeColor}/20 to-black"></div>
+                        <div class="absolute inset-0 opacity-20">
+                            ${Array(20).fill(0).map(() => `
+                                <div class="absolute w-1 h-1 rounded-full bg-white/30" 
+                                     style="left: ${Math.random() * 90 + 5}%; top: ${Math.random() * 80 + 10}%;"></div>
+                            `).join('')}
+                        </div>
+
+                        ${v.live ? `
+                            <div class="absolute top-3 left-3 z-10">
+                                <div class="live-pulse px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                                    <span class="text-[10px] font-bold text-white">LIVE</span>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        ${v.trending ? `
+                            <div class="absolute top-3 right-3 z-10">
+                                <span class="px-2 py-1 rounded-lg bg-vibe-hot/20 border border-vibe-hot/30 text-vibe-hot text-[10px] font-bold">
+                                    #${v.trending}
+                                </span>
+                            </div>
+                        ` : ''}
+
+                        <div class="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-vibe-dark to-transparent"></div>
+
+                        <div class="absolute bottom-3 left-3 right-3 z-10 flex items-end justify-between">
+                            <div>
+                                <h3 class="font-display font-bold text-lg text-white group-hover:text-vibe-accent transition-colors">${v.name}</h3>
+                                <div class="flex items-center gap-2 text-[11px] text-gray-400">
+                                    <span class="px-1.5 py-0.5 rounded bg-${v.typeColor}/10 text-${v.typeColor} font-bold">${v.type}</span>
+                                    <span>•</span>
+                                    <span>${v.distance}</span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-display font-bold text-${v.occupancyColor}">${v.occupancy}%</div>
+                                <div class="text-[10px] text-gray-500">${v.occupancyLabel}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-1 text-vibe-warning text-xs">
+                                <i data-lucide="star" class="w-3 h-3 fill-current"></i>
+                                <span class="font-semibold">${v.rating}</span>
+                            </div>
+                            ${v.danceFloor ? `
+                                <div class="flex items-center gap-1.5 text-xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-${v.danceColor} animate-pulse"></span>
+                                    <span class="text-${v.danceColor} font-medium">${v.danceFloor}</span>
+                                </div>
+                            ` : '<span class="text-[10px] text-gray-600">No dance floor</span>'}
+                        </div>
+
+                        <div class="flex flex-wrap gap-1.5 mb-3">
+                            ${v.vibes.slice(0, 2).map(vibe => `
+                                <span class="px-2 py-1 rounded-full bg-vibe-accent/8 border border-vibe-accent/15 text-vibe-accentGlow text-[10px] font-medium">
+                                    ${vibe}
+                                </span>
+                            `).join('')}
+                        </div>
+
+                        ${v.deal.active ? `
+                            <div class="flex items-center gap-2 p-2 rounded-lg bg-vibe-lime/5 border border-vibe-lime/10">
+                                <i data-lucide="zap" class="w-3 h-3 text-vibe-lime"></i>
+                                <span class="text-[11px] text-vibe-lime font-medium">${v.deal.text}</span>
+                                <span class="text-[10px] text-gray-500 ml-auto">${v.deal.remaining}</span>
+                            </div>
+                        ` : ''}
+
+                        ${v.friends > 0 ? `
+                            <div class="flex items-center gap-2 mt-3 text-[11px] text-gray-400">
+                                <div class="flex -space-x-1.5">
+                                    ${Array(Math.min(v.friends, 3)).fill(0).map((_, i) => `
+                                        <div class="w-5 h-5 rounded-full bg-vibe-accent/20 border border-vibe-dark"></div>
+                                    `).join('')}
+                                </div>
+                                <span>${v.friends} friend${v.friends > 1 ? 's' : ''} here</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            lucide.createIcons();
+        }
+
+        // ===== TAB SWITCHING =====
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('bg-vibe-accent/20', 'text-vibe-accent', 'border', 'border-vibe-accent/30');
+                el.classList.add('text-gray-400');
+            });
+
+            // Show selected tab
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            const btn = document.getElementById(`nav-${tabName}`);
+            btn.classList.remove('text-gray-400');
+            btn.classList.add('bg-vibe-accent/20', 'text-vibe-accent', 'border', 'border-vibe-accent/30');
+
+            // Re-init icons
+            setTimeout(() => lucide.createIcons(), 50);
+        }
+
+        function scrollToFeatured() {
+            document.getElementById('featured-venue').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // ===== CROWD PARTICLES =====
+        function initCrowdParticles() {
+            const container = document.getElementById('crowd-particles');
+            if (!container) return;
+
+            for (let i = 0; i < 30; i++) {
+                const dot = document.createElement('div');
+                dot.className = 'absolute w-2 h-2 rounded-full bg-white/10';
+                dot.style.left = `${Math.random() * 100}%`;
+                dot.style.top = `${Math.random() * 100}%`;
+                dot.style.animation = `float ${3 + Math.random() * 4}s ease-in-out infinite`;
+                dot.style.animationDelay = `${Math.random() * 2}s`;
+                container.appendChild(dot);
+            }
+        }
+
+        // ===== LIVE SIMULATION =====
+        function simulateLive() {
+            // Update latency
+            const latency = document.getElementById('latency-display');
+            if (latency) {
+                latency.textContent = `${(Math.random() * 2 + 1).toFixed(1)}s`;
+            }
+
+            // Slight occupancy jitter
+            const occ = document.getElementById('featured-occupancy');
+            if (occ) {
+                const base = 94;
+                const jitter = Math.floor(Math.random() * 5) - 2;
+                occ.textContent = Math.max(0, Math.min(100, base + jitter));
+            }
+
+            // Energy jitter
+            const energy = document.getElementById('featured-energy');
+            if (energy) {
+                const base = 87;
+                const jitter = Math.floor(Math.random() * 7) - 3;
+                energy.textContent = Math.max(0, Math.min(100, base + jitter));
+            }
+        }
+
+        // ===== INIT =====
+        document.addEventListener('DOMContentLoaded', () => {
+            renderVenues();
+            initCrowdParticles();
+
+            // GSAP animations
+            if (typeof gsap !== 'undefined') {
+                gsap.registerPlugin(ScrollTrigger);
+
+                gsap.from('.venue-card', {
+                    y: 60,
+                    opacity: 0,
+                    duration: 0.8,
+                    stagger: 0.12,
+                    ease: 'power3.out',
+                    scrollTrigger: { trigger: '#venue-grid', start: 'top 85%' }
+                });
+
+                gsap.from('#featured-venue', {
+                    y: 80,
+                    opacity: 0,
+                    duration: 1,
+                    ease: 'power3.out',
+                    scrollTrigger: { trigger: '#featured-venue', start: 'top 80%' }
+                });
+            }
+
+            // Live updates
+            setInterval(simulateLive, 3000);
+        });
+    </script>
+</body>
+</html>
