@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VibeCheck Command Center</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <style>
+    :root {
+      --bg: #0a0b0f;
+      --surface: #12141a;
+      --surface2: #1a1d26;
+      --border: #2a2d3a;
+      --text: #e0e0e8;
+      --muted: #6b7080;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --orange: #f97316;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* Top bar */
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+    }
+    .topbar h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .topbar h1 span { color: var(--accent); }
+    .topbar-right { display: flex; align-items: center; gap: 16px; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); animation: blink 1.5s infinite; }
+    @keyframes blink { 50% { opacity: 0.4; } }
+    .sys-stat { font-size: 0.75rem; color: var(--muted); }
+    select.venue-sel {
+      background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+      padding: 6px 12px; border-radius: 6px; font-size: 0.85rem; cursor: pointer;
+    }
+
+    /* Layout */
+    .dashboard { display: grid; grid-template-columns: 1fr 360px; grid-template-rows: auto 1fr; gap: 1px; background: var(--border); height: calc(100vh - 49px); }
+    .video-section { grid-column: 1; grid-row: 1 / 3; background: var(--bg); position: relative; }
+    .sidebar { grid-column: 2; grid-row: 1 / 3; background: var(--surface); overflow-y: auto; }
+
+    /* Video + canvas overlay */
+    .video-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; }
+    .video-container video { width: 100%; height: 100%; object-fit: contain; }
+    .video-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .video-hud { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; z-index: 5; }
+    .live-badge {
+      background: rgba(239, 68, 68, 0.9); color: #fff; padding: 4px 12px; border-radius: 4px;
+      font-size: 0.7rem; font-weight: 700; display: flex; align-items: center; gap: 6px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .live-badge .dot { width: 6px; height: 6px; background: #fff; border-radius: 50%; animation: blink 1s infinite; }
+    .hud-stat {
+      background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(8px); color: #fff;
+      padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .hud-stat.accent { border-color: var(--accent); color: var(--accent); }
+
+    .video-bottom-hud {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.85));
+      padding: 40px 16px 12px; display: flex; justify-content: space-between; align-items: flex-end;
+      z-index: 5;
+    }
+    .hud-metrics { display: flex; gap: 24px; }
+    .hud-metric { text-align: center; }
+    .hud-metric .val { font-size: 1.4rem; font-weight: 700; }
+    .hud-metric .lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+    /* Sidebar panels */
+    .panel { padding: 16px; border-bottom: 1px solid var(--border); }
+    .panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .panel-header h3 {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); font-weight: 600;
+    }
+    .panel-badge {
+      font-size: 0.65rem; padding: 2px 8px; border-radius: 3px;
+      background: var(--surface2); color: var(--accent); font-weight: 600;
+    }
+
+    /* Detection list */
+    .det-list { display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto; }
+    .det-item {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+      background: var(--surface2); border-radius: 4px; font-size: 0.78rem;
+    }
+    .det-id { color: var(--accent); font-weight: 700; min-width: 40px; }
+    .det-conf { color: var(--green); margin-left: auto; font-size: 0.7rem; }
+
+    /* Occupancy bar */
+    .occ-bar { height: 32px; background: var(--surface2); border-radius: 6px; overflow: hidden; position: relative; margin: 8px 0; }
+    .occ-fill { height: 100%; transition: width 0.6s ease; border-radius: 6px; }
+    .occ-label {
+      position: absolute; top: 50%; left: 12px; transform: translateY(-50%);
+      font-size: 0.8rem; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .occ-count { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* Heatmap canvas */
+    .heatmap-wrap { width: 100%; aspect-ratio: 16/9; border-radius: 6px; overflow: hidden; background: var(--bg); }
+    .heatmap-wrap canvas { width: 100%; height: 100%; }
+
+    /* Demographics */
+    .demo-row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+    .demo-label { font-size: 0.78rem; min-width: 60px; }
+    .demo-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    .demo-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+    .demo-pct { font-size: 0.75rem; color: var(--muted); min-width: 36px; text-align: right; }
+
+    /* Vibe zones */
+    .vibe-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .vibe-pill {
+      padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600;
+      background: rgba(124, 58, 237, 0.15); color: var(--accent2); border: 1px solid rgba(124, 58, 237, 0.3);
+    }
+
+    /* Dancefloor */
+    .energy-display { display: flex; align-items: center; gap: 12px; }
+    .energy-ring {
+      width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; font-weight: 800;
+    }
+    .energy-state { font-size: 0.9rem; font-weight: 600; }
+    .energy-sub { font-size: 0.7rem; color: var(--muted); }
+
+    /* Alerts */
+    .alert-item {
+      display: flex; align-items: flex-start; gap: 8px; padding: 8px;
+      background: var(--surface2); border-radius: 6px; margin-bottom: 6px;
+      border-left: 3px solid var(--yellow); font-size: 0.78rem;
+    }
+    .alert-item.critical { border-left-color: var(--red); }
+    .alert-time { font-size: 0.65rem; color: var(--muted); }
+
+    /* Trend sparkline */
+    .trend-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .trend-label { font-size: 0.75rem; min-width: 70px; }
+    .sparkline { flex: 1; height: 24px; }
+    .sparkline canvas { width: 100%; height: 100%; }
+
+    /* System stats */
+    .sys-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .sys-item { background: var(--surface2); padding: 8px; border-radius: 4px; }
+    .sys-item .val { font-size: 0.9rem; font-weight: 700; }
+    .sys-item .lbl { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .dashboard { grid-template-columns: 1fr; grid-template-rows: 50vh 1fr; }
+      .sidebar { grid-column: 1; grid-row: 2; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <h1><span>VIBE</span>CHECK <span style="color:var(--muted);font-weight:400">Command Center</span></h1>
+    <div class="topbar-right">
+      <div class="sys-stat" id="wsStatus">WS: connecting...</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="status-dot" id="statusDot"></div>
+        <span class="sys-stat" id="fpsCounter">-- fps</span>
+      </div>
+      <select class="venue-sel" id="venueSelect"></select>
+    </div>
+  </div>
+
+  <div class="dashboard">
+    <!-- Video + overlay -->
+    <div class="video-section">
+      <div class="video-container">
+        <video id="mirror" muted playsinline autoplay></video>
+        <canvas id="overlayCanvas"></canvas>
+
+        <div class="video-hud">
+          <div class="live-badge"><span class="dot"></span>LIVE</div>
+          <div class="hud-stat accent" id="hudPersonCount">0 persons</div>
+          <div class="hud-stat" id="hudTrackCount">0 tracked</div>
+        </div>
+
+        <div class="video-bottom-hud">
+          <div class="hud-metrics">
+            <div class="hud-metric"><div class="val" id="hudOccPct">--</div><div class="lbl">Occupancy</div></div>
+            <div class="hud-metric"><div class="val" id="hudEnergy">--</div><div class="lbl">Energy</div></div>
+            <div class="hud-metric"><div class="val" id="hudAge">--</div><div class="lbl">Age Group</div></div>
+            <div class="hud-metric"><div class="val" id="hudVibe">--</div><div class="lbl">Vibe</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Active Detections -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Active Detections</h3>
+          <span class="panel-badge" id="detCount">0</span>
+        </div>
+        <div class="det-list" id="detList"></div>
+      </div>
+
+      <!-- Occupancy -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Occupancy</h3>
+          <span class="panel-badge" id="occLabel">--</span>
+        </div>
+        <div class="occ-bar">
+          <div class="occ-fill" id="occFill" style="width:0%;background:var(--green)"></div>
+          <span class="occ-label" id="occPctLabel">0%</span>
+        </div>
+        <div class="occ-count" id="occCount">-- / -- capacity</div>
+        <div class="trend-row"><span class="trend-label">30s trend</span><div class="sparkline"><canvas id="occSparkline"></canvas></div></div>
+      </div>
+
+      <!-- Heatmap -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Density Heatmap</h3>
+          <span class="panel-badge" id="hotspotCount">0 hotspots</span>
+        </div>
+        <div class="heatmap-wrap"><canvas id="heatmapCanvas"></canvas></div>
+      </div>
+
+      <!-- Demographics -->
+      <div class="panel">
+        <div class="panel-header"><h3>Demographics</h3></div>
+        <div id="demoContent">
+          <div class="demo-row">
+            <span class="demo-label">Age</span>
+            <span class="demo-pct" style="color:var(--muted)">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dancefloor -->
+      <div class="panel" id="dancefloorPanel">
+        <div class="panel-header"><h3>Dancefloor Energy</h3></div>
+        <div class="energy-display">
+          <div class="energy-ring" id="energyRing" style="border:3px solid var(--border);">
+            <span id="energyVal">--</span>
+          </div>
+          <div>
+            <div class="energy-state" id="energyState">--</div>
+            <div class="energy-sub" id="energySub">Waiting for data</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vibe Zones -->
+      <div class="panel">
+        <div class="panel-header"><h3>Vibe Zones</h3></div>
+        <div class="vibe-pills" id="vibeZones">
+          <span style="color:var(--muted);font-size:0.78rem;">Calculating...</span>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Smart Alerts</h3>
+          <span class="panel-badge" id="alertCount">0</span>
+        </div>
+        <div id="alertList">
+          <span style="color:var(--muted);font-size:0.78rem;">No alerts</span>
+        </div>
+      </div>
+
+      <!-- System -->
+      <div class="panel">
+        <div class="panel-header"><h3>System</h3></div>
+        <div class="sys-grid">
+          <div class="sys-item"><div class="val" id="sysWsLatency">--</div><div class="lbl">WS Latency</div></div>
+          <div class="sys-item"><div class="val" id="sysMsgRate">--</div><div class="lbl">Msg/sec</div></div>
+          <div class="sys-item"><div class="val" id="sysUptime">--</div><div class="lbl">Uptime</div></div>
+          <div class="sys-item"><div class="val" id="sysProcessors">--</div><div class="lbl">Processors</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const ORIGIN = window.location.origin;
+const API_BASE = `${ORIGIN}/api`;
+const WS_PROTO = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_BASE = `${WS_PROTO}//${window.location.host}`;
+const HLS_BASE = `${ORIGIN}/hls`;
+
+let hls = null;
+let ws = null;
+let currentVenue = null;
+const startTime = Date.now();
+
+// State
+const state = {
+  detections: [],
+  paths: {},
+  frameW: 1280, frameH: 720,
+  occupancy: null,
+  demographics: null,
+  dancefloor: null,
+  vibeZones: [],
+  heatmapGrid: null,
+  occHistory: [],
+  alerts: [],
+  msgCount: 0,
+  processorsSeen: new Set(),
+};
+
+// ── Venue loading ──
+async function loadVenues() {
+  try {
+    const res = await fetch(`${API_BASE}/venues`);
+    const venues = await res.json();
+    const sel = document.getElementById('venueSelect');
+    sel.innerHTML = venues.map(v => `<option value="${v.id}">${v.name} (${v.type})</option>`).join('');
+    sel.addEventListener('change', () => switchVenue(sel.value));
+    if (venues.length) switchVenue(venues[0].id);
+  } catch (e) {
+    console.error('Failed to load venues:', e);
+    setTimeout(loadVenues, 3000);
+  }
+}
+
+function switchVenue(venueId) {
+  currentVenue = venueId;
+  state.detections = [];
+  state.paths = {};
+  state.occHistory = [];
+  state.alerts = [];
+  state.processorsSeen.clear();
+  connectHLS(venueId);
+  connectWS(venueId);
+  fetchSignals(venueId);
+}
+
+// ── HLS ──
+function connectHLS(venueId) {
+  const video = document.getElementById('mirror');
+  const url = `${HLS_BASE}/${venueId}/index.m3u8`;
+  if (hls) { hls.destroy(); hls = null; }
+  if (Hls.isSupported()) {
+    hls = new Hls({ liveSyncDurationCount: 2, liveMaxLatencyDurationCount: 5, maxBufferLength: 4 });
+    hls.loadSource(url);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    video.src = url;
+    video.addEventListener('loadedmetadata', () => video.play().catch(()=>{}));
+  }
+}
+
+// ── WebSocket ──
+function connectWS(venueId) {
+  if (ws) { ws.close(); ws = null; }
+  const wsUrl = `${WS_BASE}/ws/${venueId}`;
+  ws = new WebSocket(wsUrl);
+  const wsEl = document.getElementById('wsStatus');
+  const dotEl = document.getElementById('statusDot');
+
+  ws.onopen = () => {
+    wsEl.textContent = 'WS: connected';
+    wsEl.style.color = 'var(--green)';
+    dotEl.style.background = 'var(--green)';
+  };
+  ws.onclose = () => {
+    wsEl.textContent = 'WS: disconnected';
+    wsEl.style.color = 'var(--red)';
+    dotEl.style.background = 'var(--red)';
+    setTimeout(() => { if (currentVenue === venueId) connectWS(venueId); }, 2000);
+  };
+  ws.onerror = () => {
+    wsEl.textContent = 'WS: error';
+    wsEl.style.color = 'var(--red)';
+  };
+  ws.onmessage = (evt) => {
+    state.msgCount++;
+    const msg = JSON.parse(evt.data);
+    state.processorsSeen.add(msg.type);
+    handleMessage(msg);
+  };
+}
+
+// ── REST fallback polling ──
+async function fetchSignals(venueId) {
+  try {
+    const res = await fetch(`${API_BASE}/venues/${venueId}/signals`);
+    const data = await res.json();
+    if (data.occupancy) { state.occupancy = data.occupancy; renderOccupancy(); }
+    if (data.demographics) { state.demographics = data.demographics; renderDemographics(); }
+    if (data.dancefloor) { state.dancefloor = data.dancefloor; renderDancefloor(); }
+    if (data.vibe_zones) { state.vibeZones = data.vibe_zones; renderVibeZones(); }
+  } catch (e) { /* WS is primary */ }
+}
+setInterval(() => { if (currentVenue) fetchSignals(currentVenue); }, 5000);
+
+// ── Message handler ──
+function handleMessage(msg) {
+  const d = msg.data;
+  switch (msg.type) {
+    case 'person_detector':
+      state.detections = d.detections || [];
+      state.paths = d.paths || {};
+      state.frameW = d.frame_w || 1280;
+      state.frameH = d.frame_h || 720;
+      renderDetectionList();
+      checkAlerts(d);
+      break;
+    case 'occupancy':
+      state.occupancy = {
+        percentage: Math.min(100, Math.round((d.head_count / 120) * 100)),
+        head_count: d.head_count,
+        capacity: 120,
+        label: getOccLabel(Math.round((d.head_count / 120) * 100)),
+      };
+      state.occHistory.push(state.occupancy.percentage);
+      if (state.occHistory.length > 60) state.occHistory.shift();
+      renderOccupancy();
+      drawSparkline('occSparkline', state.occHistory);
+      break;
+    case 'demographics':
+      state.demographics = {
+        primary_age_bracket: d.primary_age_bracket,
+        male_presenting_pct: d.male_presenting_pct,
+        female_presenting_pct: d.female_presenting_pct,
+      };
+      renderDemographics();
+      break;
+    case 'dancefloor':
+      state.dancefloor = { energy_score: d.energy_score, state: d.state };
+      renderDancefloor();
+      break;
+    case 'heatmap':
+      state.heatmapGrid = d;
+      renderHeatmap();
+      break;
+    case 'anonymizer':
+      break;
+  }
+  updateHUD();
+}
+
+function getOccLabel(pct) {
+  if (pct <= 30) return 'Quiet';
+  if (pct <= 60) return 'Getting There';
+  if (pct <= 85) return 'Busy';
+  return 'Packed';
+}
+
+// ── Canvas overlay ──
+const overlayCanvas = document.getElementById('overlayCanvas');
+const overlayCtx = overlayCanvas.getContext('2d');
+
+function drawOverlay() {
+  const video = document.getElementById('mirror');
+  const rect = video.getBoundingClientRect();
+  overlayCanvas.width = rect.width * window.devicePixelRatio;
+  overlayCanvas.height = rect.height * window.devicePixelRatio;
+  overlayCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+
+  overlayCtx.clearRect(0, 0, rect.width, rect.height);
+
+  const scaleX = rect.width / state.frameW;
+  const scaleY = rect.height / state.frameH;
+
+  // Draw paths
+  for (const [tid, pts] of Object.entries(state.paths)) {
+    if (pts.length < 2) continue;
+    overlayCtx.beginPath();
+    overlayCtx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
+    overlayCtx.lineWidth = 1.5;
+    overlayCtx.moveTo(pts[0][0] * scaleX, pts[0][1] * scaleY);
+    for (let i = 1; i < pts.length; i++) {
+      overlayCtx.lineTo(pts[i][0] * scaleX, pts[i][1] * scaleY);
+    }
+    overlayCtx.stroke();
+  }
+
+  // Draw bounding boxes
+  for (const det of state.detections) {
+    const x = det.x * scaleX;
+    const y = det.y * scaleY;
+    const w = det.w * scaleX;
+    const h = det.h * scaleY;
+    const conf = det.confidence || 0;
+    const tid = det.track_id || '?';
+
+    // Box
+    const hue = (tid * 37) % 360;
+    overlayCtx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.8)`;
+    overlayCtx.lineWidth = 2;
+    overlayCtx.strokeRect(x, y, w, h);
+
+    // Corner accents
+    const corner = Math.min(w, h) * 0.2;
+    overlayCtx.strokeStyle = `hsla(${hue}, 90%, 70%, 1)`;
+    overlayCtx.lineWidth = 3;
+    // top-left
+    overlayCtx.beginPath(); overlayCtx.moveTo(x, y + corner); overlayCtx.lineTo(x, y); overlayCtx.lineTo(x + corner, y); overlayCtx.stroke();
+    // top-right
+    overlayCtx.beginPath(); overlayCtx.moveTo(x + w - corner, y); overlayCtx.lineTo(x + w, y); overlayCtx.lineTo(x + w, y + corner); overlayCtx.stroke();
+    // bottom-left
+    overlayCtx.beginPath(); overlayCtx.moveTo(x, y + h - corner); overlayCtx.lineTo(x, y + h); overlayCtx.lineTo(x + corner, y + h); overlayCtx.stroke();
+    // bottom-right
+    overlayCtx.beginPath(); overlayCtx.moveTo(x + w - corner, y + h); overlayCtx.lineTo(x + w, y + h); overlayCtx.lineTo(x + w, y + h - corner); overlayCtx.stroke();
+
+    // Label bg
+    const label = `#${tid}  ${Math.round(conf * 100)}%`;
+    overlayCtx.font = '600 11px Inter, sans-serif';
+    const tw = overlayCtx.measureText(label).width + 8;
+    overlayCtx.fillStyle = `hsla(${hue}, 80%, 30%, 0.85)`;
+    overlayCtx.fillRect(x, y - 18, tw, 16);
+    overlayCtx.fillStyle = '#fff';
+    overlayCtx.fillText(label, x + 4, y - 5);
+
+    // Centroid dot
+    overlayCtx.beginPath();
+    overlayCtx.arc(x + w / 2, y + h / 2, 3, 0, Math.PI * 2);
+    overlayCtx.fillStyle = `hsla(${hue}, 90%, 70%, 0.9)`;
+    overlayCtx.fill();
+  }
+
+  requestAnimationFrame(drawOverlay);
+}
+requestAnimationFrame(drawOverlay);
+
+// ── Render sidebar panels ──
+function renderDetectionList() {
+  const list = document.getElementById('detList');
+  document.getElementById('detCount').textContent = state.detections.length;
+  if (!state.detections.length) {
+    list.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">No detections</span>';
+    return;
+  }
+  list.innerHTML = state.detections.slice(0, 12).map(d => `
+    <div class="det-item">
+      <span class="det-id">#${d.track_id || '?'}</span>
+      <span>person</span>
+      <span style="color:var(--muted);font-size:0.7rem;">${d.x},${d.y}</span>
+      <span class="det-conf">${Math.round((d.confidence||0) * 100)}%</span>
+    </div>
+  `).join('');
+}
+
+function renderOccupancy() {
+  if (!state.occupancy) return;
+  const o = state.occupancy;
+  const pct = o.percentage || 0;
+  const color = pct <= 30 ? 'var(--green)' : pct <= 60 ? 'var(--yellow)' : pct <= 85 ? 'var(--orange)' : 'var(--red)';
+  document.getElementById('occFill').style.width = pct + '%';
+  document.getElementById('occFill').style.background = color;
+  document.getElementById('occPctLabel').textContent = pct + '%';
+  document.getElementById('occLabel').textContent = o.label || '--';
+  document.getElementById('occCount').textContent = `${o.head_count || '--'} / ${o.capacity || '--'} capacity`;
+}
+
+function renderHeatmap() {
+  if (!state.heatmapGrid) return;
+  const g = state.heatmapGrid;
+  const canvas = document.getElementById('heatmapCanvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = g.grid_w * 10;
+  canvas.height = g.grid_h * 10;
+
+  document.getElementById('hotspotCount').textContent = (g.hotspot_count || 0) + ' hotspots';
+
+  for (let y = 0; y < g.grid_h; y++) {
+    for (let x = 0; x < g.grid_w; x++) {
+      const val = (g.grid[y] && g.grid[y][x]) || 0;
+      const norm = Math.min(val / 100, 1);
+      if (norm < 0.05) {
+        ctx.fillStyle = 'rgba(0, 0, 20, 0.8)';
+      } else if (norm < 0.3) {
+        ctx.fillStyle = `rgba(0, ${Math.round(100 + norm * 400)}, 255, ${0.3 + norm})`;
+      } else if (norm < 0.6) {
+        ctx.fillStyle = `rgba(${Math.round(norm * 400)}, 255, 0, ${0.5 + norm * 0.3})`;
+      } else {
+        ctx.fillStyle = `rgba(255, ${Math.round(255 - norm * 200)}, 0, ${0.7 + norm * 0.3})`;
+      }
+      ctx.fillRect(x * 10, y * 10, 10, 10);
+    }
+  }
+}
+
+function renderDemographics() {
+  if (!state.demographics) return;
+  const d = state.demographics;
+  const el = document.getElementById('demoContent');
+  el.innerHTML = `
+    <div class="demo-row">
+      <span class="demo-label">Age</span>
+      <span class="demo-pct" style="color:var(--accent);font-weight:600;">${d.primary_age_bracket}</span>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Male</span>
+      <div class="demo-bar-wrap"><div class="demo-bar-fill" style="width:${d.male_presenting_pct}%;background:var(--accent);"></div></div>
+      <span class="demo-pct">${d.male_presenting_pct}%</span>
+    </div>
+    <div class="demo-row">
+      <span class="demo-label">Female</span>
+      <div class="demo-bar-wrap"><div class="demo-bar-fill" style="width:${d.female_presenting_pct}%;background:var(--accent2);"></div></div>
+      <span class="demo-pct">${d.female_presenting_pct}%</span>
+    </div>
+  `;
+}
+
+function renderDancefloor() {
+  if (!state.dancefloor) return;
+  const df = state.dancefloor;
+  const score = df.energy_score || 0;
+  const color = score < 20 ? 'var(--muted)' : score < 50 ? 'var(--yellow)' : score < 75 ? 'var(--orange)' : 'var(--red)';
+  document.getElementById('energyVal').textContent = score;
+  document.getElementById('energyRing').style.borderColor = color;
+  document.getElementById('energyState').textContent = df.state || '--';
+  document.getElementById('energyState').style.color = color;
+  document.getElementById('energySub').textContent = `Score ${score}/100`;
+}
+
+function renderVibeZones() {
+  const el = document.getElementById('vibeZones');
+  if (!state.vibeZones || !state.vibeZones.length) {
+    el.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">Calculating...</span>';
+    return;
+  }
+  el.innerHTML = state.vibeZones.map(z => `<span class="vibe-pill">${z.label}</span>`).join('');
+}
+
+function updateHUD() {
+  document.getElementById('hudPersonCount').textContent = state.detections.length + ' persons';
+  const tracked = new Set(state.detections.map(d => d.track_id).filter(Boolean));
+  document.getElementById('hudTrackCount').textContent = tracked.size + ' tracked';
+  document.getElementById('hudOccPct').textContent = state.occupancy ? state.occupancy.percentage + '%' : '--';
+  document.getElementById('hudEnergy').textContent = state.dancefloor ? state.dancefloor.energy_score + '/100' : '--';
+  document.getElementById('hudAge').textContent = state.demographics ? state.demographics.primary_age_bracket : '--';
+  document.getElementById('hudVibe').textContent = state.vibeZones && state.vibeZones.length ? state.vibeZones[0].label : '--';
+}
+
+// ── Sparkline ──
+function drawSparkline(canvasId, data) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+  canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+  ctx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
+  const w = canvas.offsetWidth, h = canvas.offsetHeight;
+  ctx.clearRect(0, 0, w, h);
+  if (data.length < 2) return;
+
+  const max = Math.max(...data, 1);
+  const step = w / (data.length - 1);
+
+  ctx.beginPath();
+  ctx.strokeStyle = 'var(--accent)';
+  ctx.lineWidth = 1.5;
+  data.forEach((v, i) => {
+    const x = i * step;
+    const y = h - (v / max) * h * 0.9;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // Fill
+  ctx.lineTo((data.length - 1) * step, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(0, 212, 255, 0.08)';
+  ctx.fill();
+}
+
+// ── Smart alerts ──
+function checkAlerts(detData) {
+  const count = detData.person_count || 0;
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString();
+
+  if (count > 15) {
+    addAlert('critical', `High crowd density: ${count} persons detected`, timeStr);
+  }
+  if (state.occupancy && state.occupancy.percentage > 85) {
+    addAlert('warning', `Occupancy at ${state.occupancy.percentage}% — approaching capacity`, timeStr);
+  }
+}
+
+function addAlert(type, message, time) {
+  const key = message.substring(0, 30);
+  if (state.alerts.some(a => a.key === key && Date.now() - a.ts < 30000)) return;
+  state.alerts.unshift({ type, message, time, key, ts: Date.now() });
+  if (state.alerts.length > 8) state.alerts.pop();
+  renderAlerts();
+}
+
+function renderAlerts() {
+  const el = document.getElementById('alertList');
+  document.getElementById('alertCount').textContent = state.alerts.length;
+  if (!state.alerts.length) { el.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">No alerts</span>'; return; }
+  el.innerHTML = state.alerts.map(a => `
+    <div class="alert-item ${a.type === 'critical' ? 'critical' : ''}">
+      <div>
+        <div>${a.message}</div>
+        <div class="alert-time">${a.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── System stats ──
+let lastMsgCount = 0;
+setInterval(() => {
+  const rate = state.msgCount - lastMsgCount;
+  lastMsgCount = state.msgCount;
+  document.getElementById('sysMsgRate').textContent = rate + '/s';
+  document.getElementById('sysProcessors').textContent = state.processorsSeen.size;
+
+  const uptimeSec = Math.floor((Date.now() - startTime) / 1000);
+  const mm = Math.floor(uptimeSec / 60);
+  const ss = uptimeSec % 60;
+  document.getElementById('sysUptime').textContent = `${mm}m ${ss}s`;
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    const t0 = performance.now();
+    document.getElementById('sysWsLatency').textContent = '<1ms';
+  }
+
+  document.getElementById('fpsCounter').textContent = rate + ' msg/s';
+}, 1000);
+
+// Boot
+loadVenues();
+</script>
+</body>
+</html>

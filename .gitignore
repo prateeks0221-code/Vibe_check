@@ -1,0 +1,29 @@
+# Model weights (large binaries — download separately)
+*.pt
+*.onnx
+*.torchscript
+models/
+
+# Runtime artifacts
+hls/
+logs/
+dump.rdb
+*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Recursively nested merge artifacts
+merge-tools/
+
+# Claude internal
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
