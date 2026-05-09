@@ -60,23 +60,17 @@ pathDefaults:
 paths:
   all_others:
 
-  # ── venue-001: REAL CCTV CAMERA ───────────────────────────────
-  # MediaMTX pulls from the camera.  No runOnInit.
-  # If you want to switch back to dummy, comment out "source"
-  # and uncomment "runOnInit".
   venue-001:
-    source: rtsp://192.168.0.108:8080/h264_pcm.sdp
-    # runOnInit: /opt/homebrew/bin/ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-001
-    # runOnInitRestart: yes
-
-  # ── venue-002: DUMMY TEST PATTERN ─────────────────────────────
-  venue-002:
     source: publisher
-    runOnInit: /opt/homebrew/bin/ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-002
+    runOnInit: ffmpeg -fflags nobuffer -flags low_delay -f mpjpeg -i "https://192.168.0.105:4343/video" -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-001
     runOnInitRestart: yes
 
-  # ── venue-003: DUMMY TEST PATTERN ─────────────────────────────
+  venue-002:
+    source: publisher
+    runOnInit: ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-002
+    runOnInitRestart: yes
+
   venue-003:
     source: publisher
-    runOnInit: /opt/homebrew/bin/ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-003
+    runOnInit: ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-003
     runOnInitRestart: yes

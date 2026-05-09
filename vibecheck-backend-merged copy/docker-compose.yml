@@ -1,0 +1,302 @@
+# version: "3.8"
+
+# services:
+#   # ── Stream Router ───────────────────────────────────────────────
+#   mediamtx:
+#     image: bluenviron/mediamtx:latest-ffmpeg
+#     container_name: vc_mediamtx
+#     ports:
+#       - "8554:8554"   # RTSP
+#       - "1935:1935"   # RTMP
+#       - "8888:8888"   # HLS / WebRTC
+#       - "8889:8889"   # WebRTC
+#     volumes:
+#       - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+#     networks:
+#       - vc_net
+
+#   # ── Cache & Message Bus ─────────────────────────────────────────
+#   redis:
+#     image: redis:7-alpine
+#     container_name: vc_redis
+#     ports:
+#       - "6379:6379"
+#     networks:
+#       - vc_net
+
+#   # ── Persistent Store ────────────────────────────────────────────
+#   postgres:
+#     image: postgres:15-alpine
+#     container_name: vc_postgres
+#     environment:
+#       POSTGRES_USER: vibecheck
+#       POSTGRES_PASSWORD: vibecheck
+#       POSTGRES_DB: vibecheck
+#     ports:
+#       - "5432:5432"
+#     volumes:
+#       - pg_data:/var/lib/postgresql/data
+#     networks:
+#       - vc_net
+
+#   # ── Computer Vision Pipeline ────────────────────────────────────
+#   cv-pipeline:
+#     build: ./cv-pipeline
+#     container_name: vc_cv_pipeline
+#     environment:
+#       - REDIS_URL=redis://vc_redis:6379/0
+#       - MEDIAMTX_URL=http://vc_mediamtx:8888
+#       - DUMMY_MODE=true
+#     volumes:
+#       - ./cv-pipeline/src:/app/src:ro
+#     depends_on:
+#       - mediamtx
+#       - redis
+#     networks:
+#       - vc_net
+#     deploy:
+#       replicas: 1   # scale horizontally per venue shard later
+
+#   # ── Signal Aggregation Service ──────────────────────────────────
+#   signal-service:
+#     build: ./signal-service
+#     container_name: vc_signal_service
+#     environment:
+#       - REDIS_URL=redis://vc_redis:6379/0
+#       - API_SERVER_URL=http://vc_api_server:8000
+#       - DATABASE_URL=postgresql://vibecheck:vibecheck@vc_postgres:5432/vibecheck
+#     volumes:
+#       - ./signal-service/src:/app/src:ro
+#     depends_on:
+#       - redis
+#       - postgres
+#       - api-server
+#     networks:
+#       - vc_net
+
+#   # ── REST API ────────────────────────────────────────────────────
+#   api-server:
+#     build: ./api-server
+#     container_name: vc_api_server
+#     ports:
+#       - "8000:8000"
+#     environment:
+#       - DATABASE_URL=postgresql://vibecheck:vibecheck@vc_postgres:5432/vibecheck
+#       - REDIS_URL=redis://vc_redis:6379/0
+#     volumes:
+#       - ./api-server/src:/app/src:ro
+#     depends_on:
+#       - postgres
+#       - redis
+#     networks:
+#       - vc_net
+
+#   # ── Web Player (The Mirror) ─────────────────────────────────────
+#   web-player:
+#     build: ./web-player
+#     container_name: vc_web_player
+#     ports:
+#       - "8080:80"
+#     depends_on:
+#       - mediamtx
+#       - api-server
+#     networks:
+#       - vc_net
+
+# volumes:
+#   pg_data:
+
+# networks:
+#   vc_net:
+#     driver: bridge
+
+version: "3.9"
+
+x-common-env: &common-env
+  REDIS_URL: redis://vc_redis:6379/0
+  DATABASE_URL: postgresql://vibecheck:vibecheck@vc_postgres:5432/vibecheck
+
+services:
+
+  # ─────────────────────────────────────────────
+  # MediaMTX Stream Router
+  # ─────────────────────────────────────────────
+  mediamtx:
+    image: bluenviron/mediamtx:latest-ffmpeg
+    container_name: vc_mediamtx
+    restart: unless-stopped
+
+    ports:
+      - "8554:8554"
+      - "1935:1935"
+      - "8888:8888"
+      - "8889:8889"
+
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
+  # Redis
+  # ─────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: vc_redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    command: redis-server --appendonly yes
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
+  # PostgreSQL
+  # ─────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: vc_postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: vibecheck
+      POSTGRES_PASSWORD: vibecheck
+      POSTGRES_DB: vibecheck
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vibecheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
+  # Computer Vision Pipeline
+  # ─────────────────────────────────────────────
+  cv-pipeline:
+    build:
+      context: ./cv-pipeline
+      dockerfile: Dockerfile
+      
+
+    container_name: vc_cv_pipeline
+    restart: unless-stopped
+
+    environment:
+      <<: *common-env
+      REDIS_URL: redis://vc_redis:6379/0
+      MEDIAMTX_RTSP: rtsp://vc_mediamtx:8554
+      # fast  → yolov8n + 416px + 10fps  (rapid crowd, low latency)
+      # precise → yolov8m + 640px + 5fps  (dense scene, high accuracy)
+      DETECTION_MODE: "fast"
+      # MODEL_PATH overrides preset default when set explicitly
+      # MODEL_PATH: /models/yolov8n.pt
+      LOG_LEVEL: INFO
+      DUMMY_MODE: "false"
+
+    volumes:
+      - ./cv-pipeline/src:/app/src
+      - ./logs:/logs
+      - ./models:/models
+
+    depends_on:
+      - redis
+      - mediamtx
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
+  # Signal Aggregation Service
+  # ─────────────────────────────────────────────
+  signal-service:
+    build: ./signal-service
+
+    container_name: vc_signal_service
+    restart: unless-stopped
+
+    environment:
+      <<: *common-env
+      API_SERVER_URL: http://vc_api_server:8000
+
+    volumes:
+      - ./signal-service/src:/app/src
+
+    depends_on:
+      - redis
+      - postgres
+      - api-server
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
+  # API Server
+  # ─────────────────────────────────────────────
+  api-server:
+    build: ./api-server
+
+    container_name: vc_api_server
+    restart: unless-stopped
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      <<: *common-env
+
+    volumes:
+      - ./api-server/src:/app/src
+
+    depends_on:
+      - postgres
+      - redis
+
+    command: ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
+  # Web Player
+  # ─────────────────────────────────────────────
+  web-player:
+    build: ./web-player
+
+    container_name: vc_web_player
+    restart: unless-stopped
+
+    ports:
+      - "8080:80"
+
+    depends_on:
+      - mediamtx
+      - api-server
+
+    networks:
+      - vc_net
+
+volumes:
+  pg_data:
+  redis_data:
+
+networks:
+  vc_net:
+    driver: bridge
+
+    

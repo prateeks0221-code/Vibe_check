@@ -26,7 +26,6 @@ class VenueWorker:
 
     def run(self):
         logger.info(f"[{self.venue_id}] Worker starting with {len(self.processors)} processors")
-        # Track last run time per processor for fps throttling
         last_run = {p.name: 0.0 for p in self.processors}
 
         for frame in self.grabber.frames():
@@ -43,6 +42,8 @@ class VenueWorker:
                     result = proc.process(frame, context)
                     if result:
                         self._publish(proc.name, result)
+                        if proc.name == "person_detector" and "detections" in result:
+                            context["detections"] = result["detections"]
                     last_run[proc.name] = ts
                 except Exception:
                     logger.exception(f"[{self.venue_id}] Processor {proc.name} failed")
