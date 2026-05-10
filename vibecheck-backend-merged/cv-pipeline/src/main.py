@@ -72,6 +72,8 @@
 """CV Pipeline entrypoint."""
 
 import os
+import sys
+import signal
 import time
 import logging
 import threading
@@ -207,68 +209,50 @@ def wait_for_redis():
             time.sleep(1)
 
 
+_shutdown = threading.Event()
+
+
+def _handle_signal(signum, frame):
+    logger.info(f"[CV] Received signal {signum} — shutting down cleanly")
+    _shutdown.set()
+
+
 def main():
+    # Register SIGTERM (Docker stop) + SIGINT (Ctrl-C) for clean exit
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
 
-    logger.info(
-        "[CV] Starting inference runtime warmup..."
-    )
-
+    logger.info("[CV] Starting inference runtime warmup...")
     warmup()
-
-    logger.info(
-        "[CV] Warmup complete"
-    )
+    logger.info("[CV] Warmup complete")
 
     r = wait_for_redis()
 
     workers = []
-
     for venue in VENUES:
-
-        stream_url = (
-            f"{MEDIAMTX_RTSP}/{venue['id']}"
-        )
-
-        logger.info(
-            f"[{venue['id']}] stream={stream_url}"
-        )
-
-        processors = build_processors(
-            venue
-        )
-
+        stream_url = f"{MEDIAMTX_RTSP}/{venue['id']}"
+        logger.info(f"[{venue['id']}] stream={stream_url}")
+        processors = build_processors(venue)
         worker = VenueWorker(
             venue_id=venue["id"],
             stream_url=stream_url,
             processors=processors,
             redis_client=r,
         )
-
         workers.append(worker)
 
-    logger.info(
-        f"[CV] Starting {len(workers)} workers"
-    )
-
+    logger.info(f"[CV] Starting {len(workers)} workers")
     threads = []
-
     for worker in workers:
-
-        t = threading.Thread(
-            target=run_worker,
-            args=(worker,),
-            daemon=True,
-        )
-
+        t = threading.Thread(target=run_worker, args=(worker,), daemon=True)
         t.start()
-
         threads.append(t)
 
-    while True:
-
-        time.sleep(1)
+    # Block main thread until shutdown signal
+    _shutdown.wait()
+    logger.info("[CV] Shutdown signal received — exiting")
+    sys.exit(0)
 
 
 if __name__ == "__main__":
-
     main()

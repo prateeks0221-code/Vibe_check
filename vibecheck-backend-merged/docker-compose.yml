@@ -139,6 +139,24 @@ services:
       - vc_net
 
   # ─────────────────────────────────────────────
+  # MQTT Broker (frame streaming to browser)
+  # ─────────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: vc_mosquitto
+    restart: unless-stopped
+
+    ports:
+      - "1883:1883"   # MQTT
+      - "9001:9001"   # MQTT over WebSocket (browser)
+
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+    networks:
+      - vc_net
+
+  # ─────────────────────────────────────────────
   # Redis
   # ─────────────────────────────────────────────
   redis:
@@ -192,22 +210,26 @@ services:
     build:
       context: ./cv-pipeline
       dockerfile: Dockerfile
-      
 
     container_name: vc_cv_pipeline
-    restart: unless-stopped
+    restart: on-failure:3          # don't loop forever on crash
+    stop_grace_period: 15s         # give SIGTERM 15s before SIGKILL
 
     environment:
       <<: *common-env
       REDIS_URL: redis://vc_redis:6379/0
       MEDIAMTX_RTSP: rtsp://vc_mediamtx:8554
-      # fast  → yolov8n + 416px + 10fps  (rapid crowd, low latency)
-      # precise → yolov8m + 640px + 5fps  (dense scene, high accuracy)
-      DETECTION_MODE: "fast"
+      # fast    → yolov8n  416px  10fps  cpu/gpu  fp32  (rapid crowd)
+      # precise → yolov8m  640px   2fps  cpu/gpu  fp32  (dense precision)
+      # gpu     → yolov8l  640px  15fps  GPU only  fp16  (high-end realtime)
+      DETECTION_MODE: "gpu"
       # MODEL_PATH overrides preset default when set explicitly
-      # MODEL_PATH: /models/yolov8n.pt
+      # MODEL_PATH: /models/yolov8l.pt
       LOG_LEVEL: INFO
       DUMMY_MODE: "false"
+      MQTT_HOST: vc_mosquitto
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
 
     volumes:
       - ./cv-pipeline/src:/app/src
@@ -217,6 +239,16 @@ services:
     depends_on:
       - redis
       - mediamtx
+      - mosquitto
+
+    # ── GPU access (requires nvidia-container-toolkit on host) ──────────
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
 
     networks:
       - vc_net

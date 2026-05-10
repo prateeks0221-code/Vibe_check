@@ -140,16 +140,31 @@ pathDefaults:
 
 paths:
 
+  # ── Venue 001 — HTTPS MJPEG (IP Webcam) ────────────────────────────
   venue-001:
     source: publisher
-    runOnInit: ffmpeg -fflags nobuffer -flags low_delay -f mpjpeg -i "https://192.168.0.101:4343/video" -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-001
+    fallback: /venue-001-placeholder
+    runOnInit: ffmpeg -tls_verify 0 -reconnect 1 -reconnect_at_eof 1 -reconnect_streamed 1 -reconnect_delay_max 5 -fflags nobuffer -flags low_delay -f mjpeg -i https://192.168.0.108:4343/video -vf scale=1280:720 -c:v libx264 -preset ultrafast -tune zerolatency -an -f rtsp rtsp://localhost:8554/venue-001
     runOnInitRestart: yes
 
+  venue-001-placeholder:
+    source: publisher
+    runOnInit: ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -an -f rtsp rtsp://localhost:8554/venue-001-placeholder
+    runOnInitRestart: yes
+
+  # ── Venue 002 — RTSP H264 (IP camera) ──────────────────────────────
   venue-002:
     source: publisher
-    runOnInit: ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-002
+    fallback: /venue-002-placeholder
+    runOnInit: ffmpeg -rtsp_transport tcp -fflags nobuffer -flags low_delay -timeout 8000000 -i rtsp://192.168.0.102:8080/h264_pcm.sdp -vf scale=1280:720 -r 15 -vsync cfr -c:v libx264 -preset ultrafast -tune zerolatency -b:v 1500k -maxrate 2000k -bufsize 3000k -an -f rtsp rtsp://localhost:8554/venue-002
     runOnInitRestart: yes
 
+  venue-002-placeholder:
+    source: publisher
+    runOnInit: ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -an -f rtsp rtsp://localhost:8554/venue-002-placeholder
+    runOnInitRestart: yes
+
+  # ── Venue 003 — Synthetic test feed ────────────────────────────────
   venue-003:
     source: publisher
     runOnInit: ffmpeg -re -f lavfi -i testsrc=size=1280x720:rate=15 -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-003

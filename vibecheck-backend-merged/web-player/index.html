@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VibeCheck Command Center</title>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <style>
     :root {
       --bg: #0a0b0f;
@@ -50,8 +50,7 @@
 
     /* Video + canvas overlay */
     .video-container { position: relative; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #000; }
-    .video-container video { width: 100%; height: 100%; object-fit: contain; }
-    .video-container canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    #videoCanvas { width: 100%; height: 100%; display: block; }
     .video-hud { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; align-items: center; z-index: 5; }
     .live-badge {
       background: rgba(239, 68, 68, 0.9); color: #fff; padding: 4px 12px; border-radius: 4px;
@@ -184,8 +183,7 @@
     <!-- Video + overlay -->
     <div class="video-section">
       <div class="video-container">
-        <video id="mirror" muted playsinline autoplay></video>
-        <canvas id="overlayCanvas"></canvas>
+        <canvas id="videoCanvas"></canvas>
 
         <div class="video-hud">
           <div class="live-badge"><span class="dot"></span>LIVE</div>
@@ -300,11 +298,12 @@ const ORIGIN = window.location.origin;
 const API_BASE = `${ORIGIN}/api`;
 const WS_PROTO = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const WS_BASE = `${WS_PROTO}//${window.location.host}`;
-const HLS_BASE = `${ORIGIN}/hls`;
+const MQTT_WS_URL = `ws://${window.location.hostname}:9001`;
 
-let hls = null;
+let mqttClient = null;
 let ws = null;
 let currentVenue = null;
+let venueCapacities = {};
 const startTime = Date.now();
 
 // State
@@ -329,7 +328,8 @@ async function loadVenues() {
     const res = await fetch(`${API_BASE}/venues`);
     const venues = await res.json();
     const sel = document.getElementById('venueSelect');
-    sel.innerHTML = venues.map(v => `<option value="${v.id}">${v.name} (${v.type})</option>`).join('');
+    sel.innerHTML = venues.map(v => `<option value="${v.id}" data-cap="${v.capacity}">${v.name} (${v.type})</option>`).join('');
+    venues.forEach(v => { venueCapacities[v.id] = v.capacity; });
     sel.addEventListener('change', () => switchVenue(sel.value));
     if (venues.length) switchVenue(venues[0].id);
   } catch (e) {
@@ -345,24 +345,145 @@ function switchVenue(venueId) {
   state.occHistory = [];
   state.alerts = [];
   state.processorsSeen.clear();
-  connectHLS(venueId);
+  connectMQTT(venueId);
   connectWS(venueId);
   fetchSignals(venueId);
 }
 
-// ── HLS ──
-function connectHLS(venueId) {
-  const video = document.getElementById('mirror');
-  const url = `${HLS_BASE}/${venueId}/index.m3u8`;
-  if (hls) { hls.destroy(); hls = null; }
-  if (Hls.isSupported()) {
-    hls = new Hls({ liveSyncDurationCount: 2, liveMaxLatencyDurationCount: 5, maxBufferLength: 4 });
-    hls.loadSource(url);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(()=>{}));
-  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-    video.src = url;
-    video.addEventListener('loadedmetadata', () => video.play().catch(()=>{}));
+// ── MQTT frame streaming + detections ──
+let _renderBusy = false;
+let _pendingBlob = null;
+let _renderParams = { dx: 0, dy: 0, dw: 640, dh: 360 };
+
+function connectMQTT(venueId) {
+  if (mqttClient) { mqttClient.end(true); mqttClient = null; }
+  const wsEl = document.getElementById('wsStatus');
+  const dotEl = document.getElementById('statusDot');
+
+  mqttClient = mqtt.connect(MQTT_WS_URL, { reconnectPeriod: 2000 });
+
+  mqttClient.on('connect', () => {
+    mqttClient.subscribe(`vibecheck/${venueId}/frame`);
+    mqttClient.subscribe(`vibecheck/${venueId}/detections`);
+    wsEl.textContent = 'MQTT+WS: live';
+    wsEl.style.color = 'var(--green)';
+    dotEl.style.background = 'var(--green)';
+  });
+  mqttClient.on('offline', () => {
+    wsEl.textContent = 'MQTT: reconnecting...';
+    wsEl.style.color = 'var(--yellow)';
+    dotEl.style.background = 'var(--yellow)';
+  });
+  mqttClient.on('error', () => {
+    wsEl.textContent = 'MQTT: error';
+    wsEl.style.color = 'var(--red)';
+    dotEl.style.background = 'var(--red)';
+  });
+  mqttClient.on('message', (topic, payload) => {
+    if (topic.endsWith('/frame')) {
+      renderFrame(new Blob([payload], { type: 'image/jpeg' }));
+    } else if (topic.endsWith('/detections')) {
+      try {
+        const d = JSON.parse(new TextDecoder().decode(payload));
+        state.detections = d.detections || [];
+        state.paths = d.paths || {};
+        state.frameW = d.frame_w || 1280;
+        state.frameH = d.frame_h || 720;
+        renderDetectionList();
+        checkAlerts(d);
+      } catch (e) {}
+    }
+  });
+}
+
+function renderFrame(blob) {
+  if (_renderBusy) { _pendingBlob = blob; return; }
+  _renderBusy = true;
+  _doRender(blob);
+}
+
+function _doRender(blob) {
+  createImageBitmap(blob).then(bmp => {
+    const canvas = document.getElementById('videoCanvas');
+    const ctx = canvas.getContext('2d');
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const scale = Math.min(w / bmp.width, h / bmp.height);
+    const dw = bmp.width * scale;
+    const dh = bmp.height * scale;
+    const dx = (w - dw) / 2;
+    const dy = (h - dh) / 2;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(bmp, dx, dy, dw, dh);
+    bmp.close();
+    _renderParams = { dx, dy, dw, dh };
+    drawOverlay(ctx);
+
+    _renderBusy = false;
+    if (_pendingBlob) {
+      const next = _pendingBlob;
+      _pendingBlob = null;
+      _doRender(next);
+    }
+  });
+}
+
+function drawOverlay(ctx) {
+  if (!state.detections.length || !state.frameW || !state.frameH) return;
+  const { dx, dy, dw, dh } = _renderParams;
+  const scaleX = dw / state.frameW;
+  const scaleY = dh / state.frameH;
+
+  // Paths
+  for (const [tid, pts] of Object.entries(state.paths)) {
+    if (pts.length < 2) continue;
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(0,212,255,0.45)';
+    ctx.lineWidth = 1.5;
+    ctx.moveTo(dx + pts[0][0] * scaleX, dy + pts[0][1] * scaleY);
+    for (let i = 1; i < pts.length; i++)
+      ctx.lineTo(dx + pts[i][0] * scaleX, dy + pts[i][1] * scaleY);
+    ctx.stroke();
+  }
+
+  // Boxes
+  for (const det of state.detections) {
+    const x = dx + det.x * scaleX;
+    const y = dy + det.y * scaleY;
+    const bw = det.w * scaleX;
+    const bh = det.h * scaleY;
+    const conf = det.confidence || 0;
+    const tid = det.track_id || '?';
+    const hue = (Number(tid) * 37) % 360;
+
+    ctx.strokeStyle = `hsla(${hue},80%,60%,0.85)`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, bw, bh);
+
+    const cr = Math.min(bw, bh) * 0.2;
+    ctx.strokeStyle = `hsla(${hue},90%,70%,1)`;
+    ctx.lineWidth = 3;
+    [[x,y,1,1],[x+bw,y,-1,1],[x,y+bh,1,-1],[x+bw,y+bh,-1,-1]].forEach(([px,py,sx,sy]) => {
+      ctx.beginPath(); ctx.moveTo(px+sx*cr,py); ctx.lineTo(px,py); ctx.lineTo(px,py+sy*cr); ctx.stroke();
+    });
+
+    const label = `#${tid}  ${Math.round(conf*100)}%`;
+    ctx.font = '600 11px Inter,sans-serif';
+    const tw = ctx.measureText(label).width + 8;
+    ctx.fillStyle = `hsla(${hue},80%,25%,0.85)`;
+    ctx.fillRect(x, y - 18, tw, 16);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, x + 4, y - 5);
+
+    ctx.beginPath();
+    ctx.arc(x + bw/2, y + bh/2, 3, 0, Math.PI*2);
+    ctx.fillStyle = `hsla(${hue},90%,70%,0.9)`;
+    ctx.fill();
   }
 }
 
@@ -391,7 +512,8 @@ function connectWS(venueId) {
   };
   ws.onmessage = (evt) => {
     state.msgCount++;
-    const msg = JSON.parse(evt.data);
+    let msg;
+    try { msg = JSON.parse(evt.data); } catch(e) { return; }
     state.processorsSeen.add(msg.type);
     handleMessage(msg);
   };
@@ -413,6 +535,8 @@ setInterval(() => { if (currentVenue) fetchSignals(currentVenue); }, 5000);
 // ── Message handler ──
 function handleMessage(msg) {
   const d = msg.data;
+  const cap = venueCapacities[currentVenue] || 120;
+
   switch (msg.type) {
     case 'person_detector':
       state.detections = d.detections || [];
@@ -424,10 +548,10 @@ function handleMessage(msg) {
       break;
     case 'occupancy':
       state.occupancy = {
-        percentage: Math.min(100, Math.round((d.head_count / 120) * 100)),
-        head_count: d.head_count,
-        capacity: 120,
-        label: getOccLabel(Math.round((d.head_count / 120) * 100)),
+        percentage: Math.min(100, Math.round(((d.head_count || 0) / cap) * 100)),
+        head_count: d.head_count || 0,
+        capacity: cap,
+        label: getOccLabel(Math.round(((d.head_count || 0) / cap) * 100)),
       };
       state.occHistory.push(state.occupancy.percentage);
       if (state.occHistory.length > 60) state.occHistory.shift();
@@ -450,8 +574,6 @@ function handleMessage(msg) {
       state.heatmapGrid = d;
       renderHeatmap();
       break;
-    case 'anonymizer':
-      break;
   }
   updateHUD();
 }
@@ -463,82 +585,6 @@ function getOccLabel(pct) {
   return 'Packed';
 }
 
-// ── Canvas overlay ──
-const overlayCanvas = document.getElementById('overlayCanvas');
-const overlayCtx = overlayCanvas.getContext('2d');
-
-function drawOverlay() {
-  const video = document.getElementById('mirror');
-  const rect = video.getBoundingClientRect();
-  overlayCanvas.width = rect.width * window.devicePixelRatio;
-  overlayCanvas.height = rect.height * window.devicePixelRatio;
-  overlayCtx.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
-
-  overlayCtx.clearRect(0, 0, rect.width, rect.height);
-
-  const scaleX = rect.width / state.frameW;
-  const scaleY = rect.height / state.frameH;
-
-  // Draw paths
-  for (const [tid, pts] of Object.entries(state.paths)) {
-    if (pts.length < 2) continue;
-    overlayCtx.beginPath();
-    overlayCtx.strokeStyle = 'rgba(0, 212, 255, 0.4)';
-    overlayCtx.lineWidth = 1.5;
-    overlayCtx.moveTo(pts[0][0] * scaleX, pts[0][1] * scaleY);
-    for (let i = 1; i < pts.length; i++) {
-      overlayCtx.lineTo(pts[i][0] * scaleX, pts[i][1] * scaleY);
-    }
-    overlayCtx.stroke();
-  }
-
-  // Draw bounding boxes
-  for (const det of state.detections) {
-    const x = det.x * scaleX;
-    const y = det.y * scaleY;
-    const w = det.w * scaleX;
-    const h = det.h * scaleY;
-    const conf = det.confidence || 0;
-    const tid = det.track_id || '?';
-
-    // Box
-    const hue = (tid * 37) % 360;
-    overlayCtx.strokeStyle = `hsla(${hue}, 80%, 60%, 0.8)`;
-    overlayCtx.lineWidth = 2;
-    overlayCtx.strokeRect(x, y, w, h);
-
-    // Corner accents
-    const corner = Math.min(w, h) * 0.2;
-    overlayCtx.strokeStyle = `hsla(${hue}, 90%, 70%, 1)`;
-    overlayCtx.lineWidth = 3;
-    // top-left
-    overlayCtx.beginPath(); overlayCtx.moveTo(x, y + corner); overlayCtx.lineTo(x, y); overlayCtx.lineTo(x + corner, y); overlayCtx.stroke();
-    // top-right
-    overlayCtx.beginPath(); overlayCtx.moveTo(x + w - corner, y); overlayCtx.lineTo(x + w, y); overlayCtx.lineTo(x + w, y + corner); overlayCtx.stroke();
-    // bottom-left
-    overlayCtx.beginPath(); overlayCtx.moveTo(x, y + h - corner); overlayCtx.lineTo(x, y + h); overlayCtx.lineTo(x + corner, y + h); overlayCtx.stroke();
-    // bottom-right
-    overlayCtx.beginPath(); overlayCtx.moveTo(x + w - corner, y + h); overlayCtx.lineTo(x + w, y + h); overlayCtx.lineTo(x + w, y + h - corner); overlayCtx.stroke();
-
-    // Label bg
-    const label = `#${tid}  ${Math.round(conf * 100)}%`;
-    overlayCtx.font = '600 11px Inter, sans-serif';
-    const tw = overlayCtx.measureText(label).width + 8;
-    overlayCtx.fillStyle = `hsla(${hue}, 80%, 30%, 0.85)`;
-    overlayCtx.fillRect(x, y - 18, tw, 16);
-    overlayCtx.fillStyle = '#fff';
-    overlayCtx.fillText(label, x + 4, y - 5);
-
-    // Centroid dot
-    overlayCtx.beginPath();
-    overlayCtx.arc(x + w / 2, y + h / 2, 3, 0, Math.PI * 2);
-    overlayCtx.fillStyle = `hsla(${hue}, 90%, 70%, 0.9)`;
-    overlayCtx.fill();
-  }
-
-  requestAnimationFrame(drawOverlay);
-}
-requestAnimationFrame(drawOverlay);
 
 // ── Render sidebar panels ──
 function renderDetectionList() {
@@ -577,22 +623,15 @@ function renderHeatmap() {
   const ctx = canvas.getContext('2d');
   canvas.width = g.grid_w * 10;
   canvas.height = g.grid_h * 10;
-
   document.getElementById('hotspotCount').textContent = (g.hotspot_count || 0) + ' hotspots';
-
   for (let y = 0; y < g.grid_h; y++) {
     for (let x = 0; x < g.grid_w; x++) {
       const val = (g.grid[y] && g.grid[y][x]) || 0;
       const norm = Math.min(val / 100, 1);
-      if (norm < 0.05) {
-        ctx.fillStyle = 'rgba(0, 0, 20, 0.8)';
-      } else if (norm < 0.3) {
-        ctx.fillStyle = `rgba(0, ${Math.round(100 + norm * 400)}, 255, ${0.3 + norm})`;
-      } else if (norm < 0.6) {
-        ctx.fillStyle = `rgba(${Math.round(norm * 400)}, 255, 0, ${0.5 + norm * 0.3})`;
-      } else {
-        ctx.fillStyle = `rgba(255, ${Math.round(255 - norm * 200)}, 0, ${0.7 + norm * 0.3})`;
-      }
+      if (norm < 0.05) { ctx.fillStyle = 'rgba(0,0,20,0.8)'; }
+      else if (norm < 0.3) { ctx.fillStyle = `rgba(0,${Math.round(100+norm*400)},255,${0.3+norm})`; }
+      else if (norm < 0.6) { ctx.fillStyle = `rgba(${Math.round(norm*400)},255,0,${0.5+norm*0.3})`; }
+      else { ctx.fillStyle = `rgba(255,${Math.round(255-norm*200)},0,${0.7+norm*0.3})`; }
       ctx.fillRect(x * 10, y * 10, 10, 10);
     }
   }
@@ -601,8 +640,7 @@ function renderHeatmap() {
 function renderDemographics() {
   if (!state.demographics) return;
   const d = state.demographics;
-  const el = document.getElementById('demoContent');
-  el.innerHTML = `
+  document.getElementById('demoContent').innerHTML = `
     <div class="demo-row">
       <span class="demo-label">Age</span>
       <span class="demo-pct" style="color:var(--accent);font-weight:600;">${d.primary_age_bracket}</span>
@@ -662,10 +700,8 @@ function drawSparkline(canvasId, data) {
   const w = canvas.offsetWidth, h = canvas.offsetHeight;
   ctx.clearRect(0, 0, w, h);
   if (data.length < 2) return;
-
   const max = Math.max(...data, 1);
   const step = w / (data.length - 1);
-
   ctx.beginPath();
   ctx.strokeStyle = 'var(--accent)';
   ctx.lineWidth = 1.5;
@@ -675,24 +711,19 @@ function drawSparkline(canvasId, data) {
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.stroke();
-
-  // Fill
   ctx.lineTo((data.length - 1) * step, h);
   ctx.lineTo(0, h);
   ctx.closePath();
-  ctx.fillStyle = 'rgba(0, 212, 255, 0.08)';
+  ctx.fillStyle = 'rgba(0,212,255,0.08)';
   ctx.fill();
 }
 
-// ── Smart alerts ──
+// ── Alerts ──
 function checkAlerts(detData) {
   const count = detData.person_count || 0;
   const now = new Date();
   const timeStr = now.toLocaleTimeString();
-
-  if (count > 15) {
-    addAlert('critical', `High crowd density: ${count} persons detected`, timeStr);
-  }
+  if (count > 15) addAlert('critical', `High crowd density: ${count} persons detected`, timeStr);
   if (state.occupancy && state.occupancy.percentage > 85) {
     addAlert('warning', `Occupancy at ${state.occupancy.percentage}% — approaching capacity`, timeStr);
   }
@@ -712,10 +743,7 @@ function renderAlerts() {
   if (!state.alerts.length) { el.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;">No alerts</span>'; return; }
   el.innerHTML = state.alerts.map(a => `
     <div class="alert-item ${a.type === 'critical' ? 'critical' : ''}">
-      <div>
-        <div>${a.message}</div>
-        <div class="alert-time">${a.time}</div>
-      </div>
+      <div><div>${a.message}</div><div class="alert-time">${a.time}</div></div>
     </div>
   `).join('');
 }
@@ -727,17 +755,11 @@ setInterval(() => {
   lastMsgCount = state.msgCount;
   document.getElementById('sysMsgRate').textContent = rate + '/s';
   document.getElementById('sysProcessors').textContent = state.processorsSeen.size;
-
   const uptimeSec = Math.floor((Date.now() - startTime) / 1000);
   const mm = Math.floor(uptimeSec / 60);
   const ss = uptimeSec % 60;
   document.getElementById('sysUptime').textContent = `${mm}m ${ss}s`;
-
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    const t0 = performance.now();
-    document.getElementById('sysWsLatency').textContent = '<1ms';
-  }
-
+  document.getElementById('sysWsLatency').textContent = ws && ws.readyState === WebSocket.OPEN ? '<1ms' : '--';
   document.getElementById('fpsCounter').textContent = rate + ' msg/s';
 }, 1000);
 

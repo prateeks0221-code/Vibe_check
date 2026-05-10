@@ -23,7 +23,7 @@ class DanceFloorProcessor(BaseProcessor):
         gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
         energy = 0.0
-        if self.prev_gray is not None:
+        if self.prev_gray is not None and self.prev_gray.shape == gray.shape:
             flow = cv2.calcOpticalFlowFarneback(
                 self.prev_gray, gray, None,
                 pyr_scale=0.5, levels=3, winsize=15,

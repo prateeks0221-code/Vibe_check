@@ -62,7 +62,7 @@ paths:
 
   venue-001:
     source: publisher
-    runOnInit: ffmpeg -fflags nobuffer -flags low_delay -f mpjpeg -i "https://192.168.0.105:4343/video" -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-001
+    runOnInit: ffmpeg -fflags nobuffer -flags low_delay -f mpjpeg -i "https://192.168.0.108:4343/video" -pix_fmt yuv420p -c:v libx264 -preset ultrafast -tune zerolatency -f rtsp rtsp://localhost:8554/venue-001
     runOnInitRestart: yes
 
   venue-002:
